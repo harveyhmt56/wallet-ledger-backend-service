@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: wallet-ledger-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/wallet_ledger}
+    username: ${DB_USERNAME:wallet_app}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 5
+      connection-timeout: 5000
+      connection-init-sql: SET lock_timeout = '5s'; SET statement_timeout = '15s'
+  flyway:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/wallet_ledger}
+    user: ${MIGRATION_USERNAME:wallet_migration}
+    password: ${MIGRATION_PASSWORD}
+    clean-disabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 200ms
+      connect-timeout: 500ms
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+        max.block.ms: 5000
+    consumer:
+      group-id: wallet-projection-demo
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+  jackson:
+    deserialization:
+      accept-float-as-int: false
+server:
+  shutdown: graceful
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+logging:
+  structured:
+    format:
+      console: ecs
+ledger:
+  outbox:
+    enabled: true
+    topic: wallet.balance-changed.v1
+  consumer:
+    enabled: true
+  rate-limit:
+    enabled: true

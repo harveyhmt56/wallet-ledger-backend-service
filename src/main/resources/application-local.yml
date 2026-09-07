@@ -1,0 +1,10 @@
+# Local demonstration only; use explicit secrets and an identity provider outside this profile.
+spring:
+  datasource:
+    password: ${DB_PASSWORD:wallet_app_local}
+  flyway:
+    password: ${MIGRATION_PASSWORD:wallet_migration_local}
+logging:
+  structured:
+    format:
+      console: ""
