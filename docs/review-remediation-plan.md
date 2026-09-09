@@ -138,7 +138,9 @@ The database handler currently converts even invariant and SQL programming failu
 
 Add tests of application authorization and its configuration, rather than attempting to re-test the entire Spring Security implementation. Use a local signing key/JWK fixture with the real configured decoder and the real controllers. Require production issuer/audience settings so the deployment cannot silently omit the intended audience restriction. [Spring Security JWT configuration](https://docs.spring.io/spring-security/reference/6.5/servlet/oauth2/resource-server/jwt.html).
 
-## Ordered implementation plan — not yet executed
+## Ordered implementation plan
+
+Status update, 2026-09-09: step 1 is now implemented through V4; see [fresh regression, upgrade, timeout and benchmark evidence](ledger-integrity-v4.md). The original review findings below describe the reviewed V3 baseline. Steps 2–6 remain pending.
 
 ### Step 1: preserve behaviour and repair database safeguards
 
