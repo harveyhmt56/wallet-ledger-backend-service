@@ -1,0 +1,62 @@
+# Committed implementation map
+
+Checked: 2026-09-09 against `682a1fd`; [baseline and retrieval rules](../../MEMORY.md).
+Read [pending gaps](verification.md#pending-remediation) alongside this map before making safety/readiness claims.
+
+## Entry points
+
+Paths below are the canonical sources; use the named method/class to locate behavior rather than trusting old line numbers.
+
+| Concern | Source / entry point |
+| --- | --- |
+| HTTP wallet operations, owner/role checks, request constraints | [WalletController](../../src/main/java/com/example/walletledger/wallet/api/WalletController.java) |
+| Provision, credit/debit, transfer, refund, history, reconciliation, shared `post` | [WalletService](../../src/main/java/com/example/walletledger/wallet/application/WalletService.java) |
+| Persistent reservation, fingerprint, replay, rejection savepoint, retry | [CommandExecutor.execute](../../src/main/java/com/example/walletledger/idempotency/CommandExecutor.java) |
+| Reward routes / transaction orchestration / SQL | [RewardController](../../src/main/java/com/example/walletledger/rewards/api/RewardController.java), [RewardService](../../src/main/java/com/example/walletledger/rewards/application/RewardService.java), [RewardRepository](../../src/main/java/com/example/walletledger/rewards/infrastructure/RewardRepository.java) |
+| Local Basic auth vs nonlocal JWT, roles, Actuator access | [SecurityConfiguration](../../src/main/java/com/example/walletledger/configuration/SecurityConfiguration.java) |
+| Strict JSON and UTC clock / HTTP errors | [CoreConfiguration](../../src/main/java/com/example/walletledger/configuration/CoreConfiguration.java), [ApiProblems](../../src/main/java/com/example/walletledger/configuration/ApiProblems.java) |
+| Redis quota / filter | [RedisRateLimiter](../../src/main/java/com/example/walletledger/configuration/RedisRateLimiter.java), [RateLimitFilter](../../src/main/java/com/example/walletledger/configuration/RateLimitFilter.java) |
+| Outbox claim/send/ack / topic and listener / deduplication | [OutboxRelay](../../src/main/java/com/example/walletledger/messaging/outbox/OutboxRelay.java), [MessagingConfiguration](../../src/main/java/com/example/walletledger/messaging/kafka/MessagingConfiguration.java), [BalanceProjection](../../src/main/java/com/example/walletledger/messaging/kafka/BalanceProjection.java) |
+
+The root package is `com.example.walletledger`. SQL is mainly inside `WalletService` and `RewardRepository`; the original proposed `players` and `wallet.infrastructure` packages do not exist.
+
+## Posting, locks and idempotency
+
+- HTTP mutations call `CommandExecutor`: `REQUIRES_NEW`, `READ_COMMITTED`, configured 30-second transaction timeout. It reserves `(actor, request_key)`, compares SHA-256 over operation/target plus recursively key-sorted JSON, then executes and stores status/response before commit.
+- Same key/content replays the stored receipt or rejection; changed content returns `409 IDEMPOTENCY_KEY_REUSED`. Replay retains the original `balanceAfter`; daily claims also need a new key for a new date because their fingerprint has no date payload.
+- A command savepoint rolls back `BusinessException` work while allowing its rejection response to commit. Wallet/reward mutations use `NESTED` with `rollbackFor = Exception.class`; infrastructure failures roll back the outer command. `TransientDataAccessException` permits at most three attempts, each in a fresh transaction.
+- Lock hierarchy: idempotency reservation → business state/advisory reference locks → wallets sorted by UUID **text** (PostgreSQL byte order, not Java `UUID.compareTo`). Streak/campaign rows use `FOR UPDATE`; immutable completion and refund identities use transaction advisory locks.
+- Business reference uniqueness is `(operation, source, reference)` across wallets. `post` writes journal, two entries, player balances/sequences and outbox events; transfer makes two player events. Reward credits reuse this boundary.
+- Hikari sets 5-second lock and 15-second statement timeouts. Do not assume those or the Spring timeout bound deferred COMMIT work; the review reports otherwise.
+
+Spring's [nested propagation documentation](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/tx-propagation.html) corroborates the JDBC savepoint model; code determines this project's actual use.
+
+## Schema and reads
+
+| Migration | Contents |
+| --- | --- |
+| [V1__ledger.sql](../../src/main/resources/db/migration/V1__ledger.sql) | `player`, `ledger_account`, `wallet`, `journal_transaction`, `ledger_entry`, `idempotency_request`, `outbox_event`; constraints, immutable history triggers and deferred journal/wallet checks |
+| [V2__rewards.sql](../../src/main/resources/db/migration/V2__rewards.sql) | `reward_definition`, `action_completion`, `reward_claim`, `daily_streak`, `daily_claim`, `promotion`, `promotion_claim`; seed policies and grants |
+| [V3__messaging.sql](../../src/main/resources/db/migration/V3__messaging.sql) | `consumed_event`, `wallet_projection` |
+
+- Provisioned `wallet_id` equals player UUID; account UUID is separate. Migration and request roles are separated by [role bootstrap](../../docker/postgres/01-roles.sql) and grants; runtime cannot update/delete/truncate journal history. Unqualified integrity functions still need hardening.
+- Deferred checks cover complete journals, wallet totals, account ownership, contiguous sequences and running balances. Current wallet validation scans historical prefixes, causing quadratic growth. PostgreSQL documents [deferred constraint-trigger timing](https://www.postgresql.org/docs/17/sql-createtrigger.html); these specific checks are in V1.
+- Balance reads use PostgreSQL. History uses descending wallet sequence, exclusive `< cursor`, default limit 20, range 1–100, `items`/`nextCursor`. Current history lacks refund-origin and transfer-counterparty fields.
+- `GET /v1/admin/reconciliation` is a read-only `REPEATABLE_READ` aggregate balance-versus-ledger comparison. It is not scheduled and does not audit all journal/sequence/running-balance invariants.
+
+## HTTP and reward boundaries
+
+- [README API table](../../README.md#how-to-run-setup-database-and-tests) owns route/body/demo details. Mutations return 200 on success and require a nonblank `Idempotency-Key` of at most 200 characters. Strict JSON rejects fractions, scalar coercion and unknown properties.
+- SERVICE/ADMIN: provision, credit, debit, refund and authorized reads. PLAYER: own reads, transfer from authenticated subject, daily/reward/promotion claims. Completion evidence is SERVICE-only; reconciliation is ADMIN-only.
+- Local credentials are demo-only; nonlocal configuration uses JWT `roles` and subject. Issuer/audience are deployment settings; real-decoder coverage remains pending.
+- Daily state, trusted completion claims and promotion capacity commit with the credit; applied policy versions are stored. Promotion locks the campaign before duplicate/exhaustion checks. See [decisions](decisions.md) for policy scope.
+- Error envelopes contain stable codes, but `ApiProblems` maps every handled `DataAccessException` to 503 and generic validation omits field details. Transfer receipts currently expose `recipientBalanceAfter`, including stored replay; both are pending fixes.
+
+## Messaging, Redis and runtime
+
+- Balance event v1: `eventId`, `walletId`, `walletSequence`, `journalTransactionId`, `delta`, `balanceAfter`, `reason`, `occurredAt`, `schemaVersion`. Topic/key: `wallet.balance-changed.v1` / wallet UUID.
+- Relay leases up to 100 rows for 60 seconds using `SKIP LOCKED`; sends outside money transactions; marks delivery after Kafka acknowledgement with lease-token fencing. Duplicates/reordering remain possible. The configured `ledger.outbox.topic` is not wired into the hardcoded topic constant.
+- Consumer commits event-ID deduplication and projection together; only newer sequences replace the absolute balance. It never sums out-of-order deltas. Default error handler retries indefinitely; no durable poison-event quarantine exists. Topic creation uses three partitions and replication one, without a local-only profile restriction.
+- Redis Lua counter/expiry defaults to 120 authenticated requests per 60 seconds; Actuator bypasses rate limiting. Redis failures fail open and increment `wallet.rate_limit.degraded`. HTTP `Retry-After` is currently hardcoded to 60.
+- [application.yml](../../src/main/resources/application.yml) owns timeouts, metrics, health probes and ECS logging; [local profile](../../src/main/resources/application-local.yml) changes demo passwords/logging. Correlation IDs come from [CorrelationFilter](../../src/main/java/com/example/walletledger/configuration/CorrelationFilter.java).
+- [pom.xml](../../pom.xml) pins Java 21 / Boot 3.5.16. [Wrapper](../../.mvn/wrapper/maven-wrapper.properties): Maven 3.9.11. [Compose](../../compose.yaml)/[Dockerfile](../../Dockerfile): PostgreSQL 17.6, Redis 7.4.5, Kafka 3.9.1, Temurin 21.0.8+9. These are checked-in pins, not claims of current patch suitability or production readiness.
