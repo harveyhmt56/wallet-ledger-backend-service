@@ -34,6 +34,14 @@ The JWT adapter test uses a fake decoder. It verifies role/subject translation a
 
 The Docker build initially failed because the JDK image lacked `unzip`: Maven Wrapper switched from ZIP to a tarball whose checksum differed. Adding ZIP extraction preserves the configured ZIP checksum. The ZIP SHA-256 is `0d7125e8c91097b36edb990ea5934e6c68b4440eef4ea96510a0f6815e7eeadb`, and its SHA-512 was cross-checked against Maven Central.
 
+## GitHub Actions verification
+
+[Maven verification](../.github/workflows/verify.yml) runs on pushes, pull requests and manual dispatch using Java 21 (Temurin) on Ubuntu 24.04. It checks Docker access, then runs `./mvnw --batch-mode --no-transfer-progress clean verify -Pmutation`. This uses the same Maven gates above, with Spotless's bound `check` instead of `spotless:apply` so CI rejects formatting errors. Testcontainers creates the disposable PostgreSQL, Redis and Kafka dependencies; no Compose stack or repository secrets are required.
+
+The workflow attempts to upload available Surefire, Failsafe and PIT reports even after failure as `verification-reports`, retained for 14 days. Setup failures may leave no reports. Configuration was cross-checked against the official [Ubuntu runner inventory](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md), [setup-java](https://github.com/actions/setup-java/tree/v5), [Testcontainers runtime requirements](https://java.testcontainers.org/supported_docker_environment/) and [artifact retention options](https://github.com/actions/upload-artifact/tree/v4#retention-period).
+
+Local verification on 2026-09-09 against application baseline `14b1e8f` plus this CI change: the exact CI Maven command passed using Java 21.0.8 on ARM64 macOS with OrbStack Docker 29.4.0. Inspected XML reports show 15 unit/adapter and 32 integration tests, zero failures/errors/skips, and 19/19 killed PIT mutants with no other statuses. Packaging and Spotless passed; PIT HTML was present and reported 27/30 covered lines (90%) in the four targeted domain classes. Workflow validation passed with actionlint 1.7.12. These are local results; GitHub-hosted execution and artifact upload have not yet been exercised. No application behavior changed, so no application red-green cycle was introduced.
+
 ## Local load measurement
 
 Measured at 2026-09-07T16:34:12Z with `./mvnw -Dtest=LoadMeasurement test`. Java 21.0.8 on an ARM64 macOS host, local PostgreSQL 17.6 under OrbStack; the Docker runtime reported about 4 GB memory. Each case starts 200 requests concurrently, using a 30-connection pool. The measured boundary includes application posting, persistent idempotency and PostgreSQL; it excludes HTTP, Redis and Kafka relay processing.

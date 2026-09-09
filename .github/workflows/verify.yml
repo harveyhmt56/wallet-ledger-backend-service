@@ -1,0 +1,45 @@
+name: Maven verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Testcontainers manages disposable PostgreSQL, Redis and Kafka containers.
+      - name: Check Docker
+        run: docker info
+
+      # verify includes Spotless check; CI must not silently fix formatting.
+      - name: Verify tests, formatting, packaging and mutation coverage
+        run: ./mvnw --batch-mode --no-transfer-progress clean verify -Pmutation
+
+      - name: Retain test and PIT reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-reports
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+            target/pit-reports/
+          if-no-files-found: warn
+          retention-days: 14

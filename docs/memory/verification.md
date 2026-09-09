@@ -11,6 +11,11 @@ Checked: 2026-09-09 against `682a1fd`; [baseline and retrieval rules](../../MEMO
 - Review logs under `/private/tmp` and generated `target/` reports are ephemeral. Committed reports preserve observations, not the original machine-readable artifacts or a guarantee they remain available.
 - Build evidence's “untracked memory preserved separately” describes its starting environment; the current Git history tracks the original memory in `f4e6b1a`. The [archive](archive/2026-09-07-plan.md) preserves that original text verbatim beneath a historical notice.
 
+## CI addition — checked 2026-09-09
+
+- Against baseline `14b1e8f` plus this CI change, [Maven verification](../../.github/workflows/verify.yml) now configures push/PR/manual runs on Ubuntu 24.04, Java 21, Docker/Testcontainers and `clean verify -Pmutation`, retaining available Surefire/Failsafe/PIT reports for 14 days even after failure. CI checks formatting instead of applying fixes.
+- Fresh local verification passed: 15 unit/adapter tests, 32 real-container integration tests, zero failures/errors/skips, and 19/19 killed PIT mutants (no other statuses); packaging, Spotless and actionlint 1.7.12 passed. [CI evidence and sources](../build-evidence.md#github-actions-verification) record the environment and limits. GitHub-hosted execution/upload remain unverified; the production remediation items below remain pending apart from adding this CI configuration.
+
 ## Commands and test navigation
 
 Run from the repository root with Java 21; integration/mutation gates require Docker and dependencies/images. See [README setup](../../README.md#how-to-run-setup-database-and-tests) and [pom.xml](../../pom.xml).
