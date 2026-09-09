@@ -1,5 +1,7 @@
 # Build and verification evidence
 
+Latest database remediation evidence: [V4 integrity, upgrade, deadline and long-history verification](ledger-integrity-v4.md), checked 2026-09-09. The sections below retain the earlier implementation and CI observations.
+
 Implementation date: 2026-09-08 (Hong Kong). Required runtime: Java 21, Spring Boot 3.5.16.
 
 The baseline contained only the original README and an untracked user-owned `MEMORY.md`. No prior application tests or build existed. Work is on `codex/implement-wallet-ledger`; the memory file is preserved separately.

@@ -1,8 +1,17 @@
 # Verification and pending work
 
-Checked: 2026-09-09 against `682a1fd`; [baseline and retrieval rules](../../MEMORY.md).
+Checked: 2026-09-09 against baseline `79032c9` plus V4 remediation; [baseline and retrieval rules](../../MEMORY.md).
 
-## Evidence provenance
+## V4 remediation — fresh evidence
+
+- Step 1 is implemented in [V4](../../src/main/resources/db/migration/V4__indexed_ledger_integrity.sql); applied V1–V3 are unchanged. Per-entry predecessor and final-wallet/tail checks replace quadratic history scans; all integrity functions use qualified permanent objects and trusted invoker search paths.
+- Observed real-PostgreSQL red before production edits: four TEMP-shadow bypasses committed, corrupt V3 fixtures upgraded silently, and a 20k-history credit took 25.692 seconds against a 10-second CI bound. Fresh V4 regressions cover preserved invariants, populated/fresh upgrades, rejected corruption, preflight waiting for writers, audit shadowing, actual `psql` success/failure exits and 16 concurrent long-history credit/debit/transfer/refund requests.
+- Final `clean verify -Pmutation`: **15 unit/adapter + 90 integration cases**, no failures/errors/skips; packaging and Spotless passed. PIT: **19/19 killed**, no other statuses. Additional real-database mutation harness: **12/12 targeted SQL mutants killed**, with green controls and rejected invalid/setup outcomes. PIT still covers only the four domain classes; SQL mutants are targeted, not exhaustive audit/service coverage.
+- Warmed local V3 credit samples at 1k/5k/10k/20k entries: 74.926/1519.784/6003.796/24930.376 ms. V4 credit medians: 1.667/1.573/1.374/1.685 ms (three samples per size); debit/transfer/refund also measured. Predecessor and tail plans each return one row through the existing unique index. These service-through-commit measurements are not a production SLO.
+- JDBC fault injection verifies statement timeout does not bound deferred commit, PostgreSQL 17 transaction timeout terminates it with rollback and same-key retry, and a lost post-commit acknowledgement recovers the stored receipt without a second posting. Global transaction-timeout configuration remains unchanged.
+- [Canonical V4 evidence and raw benchmark reports](../ledger-integrity-v4.md) contain commands, limits and source cross-checks. [Bounded maintenance audit](../../scripts/audit-ledger.sql) raises on mismatches; deployment scheduling and alert routing are documented, not externally installed. Full local log `/private/tmp/ledger-v4-final-verify.log` and generated `target/` reports are ephemeral. No deployed database or GitHub-hosted run was exercised.
+
+## Earlier evidence provenance
 
 - This memory refresh inspected committed code, migrations, build/configuration and tests, and cross-checked README, build evidence and both reviews. No application test suite, benchmark, live HTTP probe or exploit was rerun during this refresh.
 - Implementation commit: `f4e6b1a`. Both reviews name `4a1a954a844e951e74531303e855574551d6e14f`; that object is available locally. `git diff 4a1a954a844e951e74531303e855574551d6e14f 682a1fd` changes only the original `MEMORY.md` and the two review documents. Application/build/test trees match; the reviews are not evidence that remediation was implemented.
@@ -27,12 +36,14 @@ Run from the repository root with Java 21; integration/mutation gates require Do
 | Full gate including PIT (80% mutation/coverage thresholds; fail on zero mutants) | `./mvnw clean verify -Pmutation` |
 | Format Java / inspect formatting | `./mvnw spotless:apply` / `./mvnw spotless:check` |
 | Optional local load measurement, excluded from default suites | `./mvnw -Dtest=LoadMeasurement test` |
+| Optional warmed long-history benchmark | `./mvnw -Dtest=LedgerHistoryMeasurement test`; [V3 comparison command](../ledger-integrity-v4.md#long-history-measurements) |
 | Generated evidence | `target/surefire-reports`, `target/failsafe-reports`, `target/pit-reports`, `target/load-report.json` |
 
 | Behavior | Focused source to inspect |
 | --- | --- |
 | 100 debits of 10 from 500 → 50 successes, 50 rejections, zero; 100 same-key copies; credit/transfer/refund races; history | [WalletLedgerIT](../../src/test/java/com/example/walletledger/wallet/WalletLedgerIT.java) |
 | Immutable/incomplete journals, outbox failure rollback, held wallet lock | [DatabaseSafeguardsIT](../../src/test/java/com/example/walletledger/wallet/DatabaseSafeguardsIT.java) |
+| V4 integrity/TEMP regressions, populated preflight/full audit, deadlines, long history, SQL mutations | [V4 test navigation and evidence](../ledger-integrity-v4.md#observed-red--green) |
 | Stored replay/rejection and infrastructure rollback | [CommandExecutorIT](../../src/test/java/com/example/walletledger/idempotency/CommandExecutorIT.java) |
 | UTC/streak, same completion with different keys, 500 players/100 slots, claim/capacity rollback | [RewardRacesIT](../../src/test/java/com/example/walletledger/rewards/RewardRacesIT.java), [RewardServiceIT](../../src/test/java/com/example/walletledger/rewards/RewardServiceIT.java) |
 | HTTP validation/owner checks and two-instance replay | [HttpApiIT](../../src/test/java/com/example/walletledger/wallet/HttpApiIT.java), [TwoInstanceHttpIT](../../src/test/java/com/example/walletledger/wallet/TwoInstanceHttpIT.java) |
@@ -42,11 +53,11 @@ Tests use disposable PostgreSQL, not H2 or the Compose database. [Shared test co
 
 ## Pending remediation
 
-All items below remain pending at the checked commit. The [fact-checked plan](../review-remediation-plan.md) owns details, evidence tags, priorities and acceptance criteria; consult it before the earlier [independent review](../review-by-harvey-with-claude.md), whose readiness verdict and some assumptions it corrects.
+Step 1 is implemented and verified above; later items remain pending. The [fact-checked plan](../review-remediation-plan.md) owns original findings and acceptance criteria; [V4 evidence](../ledger-integrity-v4.md) supersedes its step-1 implementation status. Consult these before the earlier [independent review](../review-by-harvey-with-claude.md), whose readiness verdict and some assumptions the plan corrects.
 
 | Planned order | Remaining work and evidence limits |
 | --- | --- |
-| 1. Database validation | Replace quadratic historical-prefix validation through a new migration while preserving invariants; harden unqualified function relations/types/search path; add complete audit, populated-schema upgrade and deadline tests. Review reports ~24.3 seconds COMMIT at 20,000 entries and a TEMP-table bypass using arbitrary runtime-role SQL; no HTTP exploit was identified. |
+| 1. Database validation | **Implemented/verified locally:** V4, preserved invariants, full/preflight audit, TEMP hardening, deadline tests and long-history benchmarks. Environment-specific upgrade, audit scheduling/alerts and production latency targets remain operational adoption work. |
 | 2. Receipt privacy and authorization | Project caller-safe fresh **and stored** transfer receipts; add real controller authorization and configured JWT-decoder tests. Current `recipientBalanceAfter` leak is a static data-flow finding. |
 | 3. Errors and audit fields | Separate known 409 conflicts, transient 503 failures and unexpected internal failures; preserve headers and useful field errors; add transfer/refund history relationships, rejection cases and accurate rate-limit retry guidance. |
 | 4. Messaging | Verify production replication/minimum ISR; wire topic configuration; validate exact event types/ranges; durable poison quarantine/replay; listener/offset recovery and relay lease tests. Current single-copy acknowledgements are a durability risk, not a reproduced broker-loss test. |

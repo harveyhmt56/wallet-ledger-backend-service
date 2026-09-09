@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Last checked: 2026-09-09 against committed `682a1fd23cd64b3cbfbe779c99e2263b2c03f31b`.
+Last checked: 2026-09-09 against baseline `79032c9` plus the V4 remediation change; see [fresh evidence](docs/memory/verification.md).
 This is a retrieval index and source-backed snapshot, not an instruction to execute a backlog.
 
 ## Requirement:
@@ -12,11 +12,11 @@ This is a retrieval index and source-backed snapshot, not an instruction to exec
 
 ## Current state
 
-- Implementation was committed in `f4e6b1a`; later commits `77ac43c` and `682a1fd` add reviews only. The old “no implementation” status is obsolete.
+- Base implementation is `f4e6b1a`; reviews followed, and `79032c9` added CI. Remediation step 1 now adds V4 while preserving V1–V3.
 - Java 21 / Spring Boot 3.5.16; one Spring JDBC application. PostgreSQL owns money, claims, idempotency and outbox; Redis rate limits; Kafka carries balance snapshots.
 - Provisioning, credit/debit, balance/history, transfers, full credit/debit refunds, daily/trusted/promotion rewards, outbox/projection and reconciliation are implemented.
-- Production remediation remains pending: growing-history validation cost, SQL integrity-function hardening, transfer receipt privacy, and messaging durability/recovery are key gaps. See the evidence note before claiming readiness.
-- This memory refresh checked committed source and documentation; it did not rerun application tests or remediate application code. Historical test results remain attributed.
+- V4 implements indexed predecessor/final-tail checks, trusted integrity-function name resolution, populated-data preflight and a separate bounded operational audit. Fresh real-PostgreSQL regression, upgrade, deadline and long-history evidence is recorded.
+- Remaining production work includes transfer receipt privacy, authorization/error coverage, messaging durability/recovery and operational deployment. See the evidence note before claiming readiness.
 
 ## Read only what the task needs
 
@@ -27,6 +27,7 @@ This is a retrieval index and source-backed snapshot, not an instruction to exec
 | Test commands, evidence limits, production gaps, next remediation step | [Verification and pending work](docs/memory/verification.md) |
 | Setup, credentials, endpoint bodies, demo, environment variables | [README](README.md) |
 | Detailed findings and ordered acceptance criteria | [Fact-checked remediation plan](docs/review-remediation-plan.md) |
+| V4 upgrade, audit invocation/alerts, regression and long-history evidence | [Ledger integrity V4](docs/ledger-integrity-v4.md) |
 | Original planning rationale, alternatives and reference list | [Archived plan](docs/memory/archive/2026-09-07-plan.md) — historical; load only when needed |
 
 ## Retrieval and maintenance

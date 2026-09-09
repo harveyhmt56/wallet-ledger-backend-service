@@ -1,6 +1,6 @@
 # Committed implementation map
 
-Checked: 2026-09-09 against `682a1fd`; [baseline and retrieval rules](../../MEMORY.md).
+Checked: 2026-09-09 against baseline `79032c9` plus V4 remediation; [baseline and retrieval rules](../../MEMORY.md).
 Read [pending gaps](verification.md#pending-remediation) alongside this map before making safety/readiness claims.
 
 ## Entry points
@@ -27,7 +27,7 @@ The root package is `com.example.walletledger`. SQL is mainly inside `WalletServ
 - A command savepoint rolls back `BusinessException` work while allowing its rejection response to commit. Wallet/reward mutations use `NESTED` with `rollbackFor = Exception.class`; infrastructure failures roll back the outer command. `TransientDataAccessException` permits at most three attempts, each in a fresh transaction.
 - Lock hierarchy: idempotency reservation → business state/advisory reference locks → wallets sorted by UUID **text** (PostgreSQL byte order, not Java `UUID.compareTo`). Streak/campaign rows use `FOR UPDATE`; immutable completion and refund identities use transaction advisory locks.
 - Business reference uniqueness is `(operation, source, reference)` across wallets. `post` writes journal, two entries, player balances/sequences and outbox events; transfer makes two player events. Reward credits reuse this boundary.
-- Hikari sets 5-second lock and 15-second statement timeouts. Do not assume those or the Spring timeout bound deferred COMMIT work; the review reports otherwise.
+- Hikari sets 5-second lock and 15-second statement timeouts. Fresh [deadline fault tests](../../src/test/java/com/example/walletledger/wallet/TransactionDeadlineIT.java) prove statement timeout does not bound deferred COMMIT, while PostgreSQL 17 transaction timeout does. The latter remains a per-deployment option; same-key rollback/retry and lost-acknowledgement replay are tested.
 
 Spring's [nested propagation documentation](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/tx-propagation.html) corroborates the JDBC savepoint model; code determines this project's actual use.
 
@@ -38,11 +38,12 @@ Spring's [nested propagation documentation](https://docs.spring.io/spring-framew
 | [V1__ledger.sql](../../src/main/resources/db/migration/V1__ledger.sql) | `player`, `ledger_account`, `wallet`, `journal_transaction`, `ledger_entry`, `idempotency_request`, `outbox_event`; constraints, immutable history triggers and deferred journal/wallet checks |
 | [V2__rewards.sql](../../src/main/resources/db/migration/V2__rewards.sql) | `reward_definition`, `action_completion`, `reward_claim`, `daily_streak`, `daily_claim`, `promotion`, `promotion_claim`; seed policies and grants |
 | [V3__messaging.sql](../../src/main/resources/db/migration/V3__messaging.sql) | `consumed_event`, `wallet_projection` |
+| [V4__indexed_ledger_integrity.sql](../../src/main/resources/db/migration/V4__indexed_ledger_integrity.sql) | Write-blocking populated-schema audit, indexed predecessor/final-tail validation, hardened invoker functions and separate full SQL audit; V1–V3 unchanged |
 
-- Provisioned `wallet_id` equals player UUID; account UUID is separate. Migration and request roles are separated by [role bootstrap](../../docker/postgres/01-roles.sql) and grants; runtime cannot update/delete/truncate journal history. Unqualified integrity functions still need hardening.
-- Deferred checks cover complete journals, wallet totals, account ownership, contiguous sequences and running balances. Current wallet validation scans historical prefixes, causing quadratic growth. PostgreSQL documents [deferred constraint-trigger timing](https://www.postgresql.org/docs/17/sql-createtrigger.html); these specific checks are in V1.
+- Provisioned `wallet_id` equals player UUID; account UUID is separate. Migration and request roles are separated by [role bootstrap](../../docker/postgres/01-roles.sql) and grants; runtime cannot update/delete/truncate journal history. V4 qualifies persistent relation/composite-type references and pins all integrity/audit functions to `pg_catalog, public, pg_temp` with invoker privileges. TEMP-shadow regressions pass with TEMP privileges retained.
+- Deferred checks cover complete journals, ownership, contiguous sequences and running balances. V4 checks each new player entry's predecessor and the final stored wallet against its tail through the existing unique sequence index; multiple postings in one transaction are supported. The preflight establishes a valid immutable base before incremental checks replace V1's quadratic scans. See [V4 design/evidence](../ledger-integrity-v4.md) and PostgreSQL [constraint-trigger timing](https://www.postgresql.org/docs/17/sql-createtrigger.html).
 - Balance reads use PostgreSQL. History uses descending wallet sequence, exclusive `< cursor`, default limit 20, range 1–100, `items`/`nextCursor`. Current history lacks refund-origin and transfer-counterparty fields.
-- `GET /v1/admin/reconciliation` is a read-only `REPEATABLE_READ` aggregate balance-versus-ledger comparison. It is not scheduled and does not audit all journal/sequence/running-balance invariants.
+- `GET /v1/admin/reconciliation` remains a read-only `REPEATABLE_READ` aggregate balance comparison. `public.audit_ledger_integrity()` separately audits ownership, metadata, sequence/running balances, wallet totals, journals and inverse refunds in one snapshot. [Maintenance script](../../scripts/audit-ledger.sql) bounds execution and fails on findings; [deployment scheduling/alerts](../ledger-integrity-v4.md#populated-upgrades-and-operational-audit) require the operator's job runner.
 
 ## HTTP and reward boundaries
 
