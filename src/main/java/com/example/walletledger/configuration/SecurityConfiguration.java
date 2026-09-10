@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.context.annotation.*;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -62,8 +63,10 @@ public class SecurityConfiguration {
       HttpSecurity http,
       ObjectMapper json,
       RedisRateLimiter limiter,
+      OAuth2ResourceServerProperties properties,
       @Value("${ledger.rate-limit.enabled:true}") boolean enabled)
       throws Exception {
+    RequiredJwtConfiguration.validate(properties.getJwt());
     var roles = new JwtGrantedAuthoritiesConverter();
     roles.setAuthoritiesClaimName("roles");
     roles.setAuthorityPrefix("ROLE_");

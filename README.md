@@ -21,7 +21,7 @@ Compose binds published ports to localhost. The demo provisions Alice and Bob, c
 | `10000000-0000-0000-0000-000000000001` | `alice-password` | Alice's wallet, transfers and reward claims |
 | `10000000-0000-0000-0000-000000000002` | `bob-password` | Bob's wallet, transfers and reward claims |
 
-These fixed credentials exist only in the `local` profile. Other profiles use OAuth2 JWTs: configure `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` and `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES`. Signed `roles` claims contain `PLAYER`, `SERVICE`, or `ADMIN`; player `sub` is the provisioned player UUID. Provider integration is deployment configuration; automated tests fake the token decoder and do not contact an identity provider. See [Spring Security JWT configuration](https://docs.spring.io/spring-security/reference/6.5/servlet/oauth2/resource-server/jwt.html).
+These fixed credentials exist only in the `local` profile. Other profiles use OAuth2 JWTs and refuse startup without a nonblank issuer and at least one nonblank audience: configure `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` and `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES`. Signed `roles` claims contain `PLAYER`, `SERVICE`, or `ADMIN`; player `sub` is the provisioned player UUID. Boot configures the decoder; optionally set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI` to avoid issuer discovery. Tests use a local JWK fixture and signed tokens through real HTTP/controllers; no live identity provider is contacted. Production provider integration remains deployment-specific. See [Spring Security JWT configuration](https://docs.spring.io/spring-security/reference/6.5/servlet/oauth2/resource-server/jwt.html).
 
 Host development:
 
@@ -60,7 +60,7 @@ curl --fail-with-body -u service:service-password \
 | `POST /v1/wallets/{playerId}/credits` or `/debits` | Monetary body; immutable receipt |
 | `GET /v1/wallets/{playerId}/balance` | Current PostgreSQL balance and sequence |
 | `GET /v1/wallets/{playerId}/transactions?limit=20&cursor=42` | `items`, `nextCursor`; limit 1–100 |
-| `POST /v1/transfers` | Monetary body plus `recipientId`; sender from authentication |
+| `POST /v1/transfers` | Monetary body plus `recipientId`; sender from authentication, response contains only sender funds |
 | `POST /v1/transactions/{transactionId}/refunds` | `reason`, `source`, `reference`; full reversal |
 | `POST /v1/daily-login/claims` | No business payload; UTC daily reward |
 | `POST /internal/v1/action-completions` | `playerId`, `rewardId`, `source`, `reference`; trusted service only |
@@ -70,7 +70,7 @@ curl --fail-with-body -u service:service-password \
 
 The seeded mission ID is `20000000-0000-0000-0000-000000000001` (100 units, `mission-v1`). The seeded promotion is `30000000-0000-0000-0000-000000000001` (25 units, 100 distinct players, `promotion-v1`). Definitions are seeded for the assignment; there is no policy-management API.
 
-Mutations return HTTP 200 receipts. Errors use `application/problem+json` with a stable `code`: 400 invalid input, 401/403 authentication/authorization, 404 missing resource, 409 business conflict, 429 request quota, and 503 for every `DataAccessException` handled by the current advice, including nontransient failures. Error classification remains a known gap; a 503 alone does not prove that the failure is transient. Replays include the original `balanceAfter`; use the balance endpoint for current funds.
+Mutations return HTTP 200 receipts. Errors use `application/problem+json` with a stable `code`: 400 invalid input, 401/403 authentication/authorization, 404 missing resource, 409 business conflict, 429 request quota, and 503 for every `DataAccessException` handled by the current advice, including nontransient failures. Error classification remains a known gap; a 503 alone does not prove that the failure is transient. Replays include the original `balanceAfter`; use the balance endpoint for current funds. Transfer responses intentionally omit `recipientBalanceAfter` for fresh results and all replays, including receipts stored before this fix. They retain transaction identity, sender balance/sequence and recipient identity. Stored receipts and immutable journals are unchanged; see [privacy and authorization evidence](docs/api-security-step2.md).
 
 ## Design decisions and trade-offs
 
@@ -98,12 +98,12 @@ Executable JUnit acceptance examples assert public API and database outcomes; Gh
 
 The required debit race starts 100 independent operations of 10 against 500 and asserts exactly 50 successes, 50 rejections and balance zero. The quota race starts 500 players against 100 slots and checks exactly 100 distinct winners. Database tests explicitly hold a wallet lock, reject direct ledger corruption, and inject failures during outbox/claim persistence to prove atomic rollback. PostgreSQL is real; no H2 substitute is used. Kafka tests pause the real broker and replay delivery after a simulated acknowledgement/marking crash; Redis tests inspect the real counter TTL.
 
-PIT targets the money, daily reward and sequence-projection domain policies with 80% mutation and coverage gates. Reports must contain evaluated mutants; zero-mutant and invalid runs are failures. JVM mutation does not mutate PostgreSQL triggers, so `LedgerSqlMutationIT` also runs 12 targeted SQL mutations against real PostgreSQL acceptance examples. See [PIT's Maven configuration](https://pitest.org/quickstart/maven/). Recorded results and measurement limits are in [build evidence](docs/build-evidence.md) and [V4 evidence](docs/ledger-integrity-v4.md).
+PIT targets the money, daily reward and sequence-projection domain policies, the transfer response projection and required JWT configuration checks with 80% mutation and coverage gates. Reports must contain evaluated mutants; zero-mutant and invalid runs are failures. JVM mutation does not mutate PostgreSQL triggers, so `LedgerSqlMutationIT` also runs 12 targeted SQL mutations against real PostgreSQL acceptance examples. See [PIT's Maven configuration](https://pitest.org/quickstart/maven/). Recorded results and measurement limits are in [build evidence](docs/build-evidence.md), [V4 evidence](docs/ledger-integrity-v4.md) and [API security evidence](docs/api-security-step2.md).
 
 ## Assumptions & limitations
 
-- Core features and V4's database repair are implemented; production readiness remains unestablished. [Current fact check and remaining release gates](docs/review-remediation-plan.md#second-pass-fact-check--2026-09-10) cover transfer receipt privacy, API/JWT coverage, error clarity, messaging and deployment evidence.
-- Transfer receipts currently expose `recipientBalanceAfter`, including stored replay; this privacy defect remains pending. History omits refund-origin and transfer-counterparty fields.
+- Core features, V4's database repair and step 2 privacy/authorization are implemented and verified locally; production readiness remains unestablished. [Remaining release gates](docs/review-remediation-plan.md#ordered-implementation-plan) include error clarity, messaging and deployment evidence.
+- History still omits refund-origin and transfer-counterparty fields. The [API security evidence](docs/api-security-step2.md) distinguishes route authorization denials from replayable business rejections and local JWT fixtures from production provider integration.
 - Service code enforces operation/account/sign and inverse-refund semantics. Generic commit triggers do not enforce all of those relationships; `refund_inverse` is an audit check. See [V4's database boundary](docs/ledger-integrity-v4.md#database-boundary).
 - One `COIN` currency in Java `long` / PostgreSQL `BIGINT`; maximum player balance is `Long.MAX_VALUE`.
 - The server's UTC date defines daily claims. Consecutive days grant `10 × streak day`; missed days reset the streak.

@@ -1,8 +1,16 @@
 # Verification and pending work
 
-Checked: 2026-09-10 at `2fe9ce4` (V4 implementation `9ef2639`); [baseline and retrieval rules](../../MEMORY.md).
+Checked: 2026-09-10 against baseline `45b28ab` plus step 2 privacy/authorization; [baseline and retrieval rules](../../MEMORY.md).
 
-## Current review refresh — documentation only
+## Step 2 privacy and authorization — fresh evidence, 2026-09-10
+
+- [Canonical behavior, tests, red/green evidence and primary references](../api-security-step2.md): transfer success responses use a sender field allowlist after execution/replay; fresh and historical stored receipts cannot disclose recipient funds. Stored JSON, identities, fingerprints, posting code and migrations remain unchanged.
+- Observed valid red: recipient funds escaped in the controller unit test and two real-PostgreSQL HTTP cases; seven invalid JWT configuration cases started unexpectedly while two controls passed. Test harness errors were corrected before counting red evidence.
+- Final Java 21 `clean verify -Pmutation`: **27 unit/adapter + 186 integration cases**, zero failures/errors/skips; packaging and Spotless passed. PIT **26/26 killed**, no other statuses, including 4 transfer projection + 3 required JWT configuration mutants. Existing **12/12 SQL mutation cases** passed within the integration total.
+- `HttpAuthorizationIT` adds 72 endpoint × caller cases and 9 input/entitlement cases with real controllers and PostgreSQL, using supplied test identities. `ConfiguredJwtHttpIT` adds 12 actual HTTP cases with Boot's decoder and loopback signed/JWK fixtures. Required issuer/audiences fail closed outside `local`; no live identity provider was used.
+- Route authentication/authorization denials reserve no key or business writes. `COMPLETION_NOT_OWNED` is a stored business rejection with no money/claim changes, preserving established idempotency semantics. Full log `/private/tmp/step2-full-verify.log` and generated `target/` reports are ephemeral. Production provider integration, hosted CI and deployment remain unverified.
+
+## Earlier review refresh — documentation only
 
 - At `2fe9ce4`, the only change since `9ef2639` is Claude's second review. Source/tests, Git diffs, retained benchmark JSON and existing generated XML were inspected; no application test, benchmark, HTTP/SQL probe, hosted CI lookup or deployment was run in this refresh.
 - Existing reports corroborate 15 unit/adapter + 90 integration cases (including 12 SQL mutation cases), zero failures/errors/skips and 19 KILLED PIT results. Generated artifacts are mutable; inspection is not a fresh gate or proof of exact commit provenance. Historical BUILD/LIVE/BENCH/DB claims stay attributed.
@@ -56,16 +64,16 @@ Run from the repository root with Java 21; integration/mutation gates require Do
 | HTTP validation/owner checks and two-instance replay | [HttpApiIT](../../src/test/java/com/example/walletledger/wallet/HttpApiIT.java), [TwoInstanceHttpIT](../../src/test/java/com/example/walletledger/wallet/TwoInstanceHttpIT.java) |
 | Kafka outage/lease and manually invoked projection; Redis TTL | [MessagingIT](../../src/test/java/com/example/walletledger/messaging/MessagingIT.java), [RedisRateLimiterIT](../../src/test/java/com/example/walletledger/configuration/RedisRateLimiterIT.java) |
 
-Tests use disposable PostgreSQL, not H2 or the Compose database. [Shared test configuration](../../src/test/java/com/example/walletledger/support/PostgresIntegrationTest.java) disables listener startup. [JwtSecurityTest](../../src/test/java/com/example/walletledger/configuration/JwtSecurityTest.java) uses a fake decoder and probe controller; real signature/issuer/audience checks and full endpoint authorization are not established by it.
+Tests use disposable PostgreSQL, not H2 or the Compose database. [Shared test configuration](../../src/test/java/com/example/walletledger/support/PostgresIntegrationTest.java) disables listener startup. [JwtSecurityTest](../../src/test/java/com/example/walletledger/configuration/JwtSecurityTest.java) still uses a fake decoder and probe controller. The new [signed-token HTTP tests](../../src/test/java/com/example/walletledger/configuration/ConfiguredJwtHttpIT.java) and [controller role matrix](../../src/test/java/com/example/walletledger/wallet/HttpAuthorizationIT.java) provide separate step 2 evidence above.
 
 ## Pending remediation
 
-Step 1 is implemented and verified above; later items remain pending. The [fact-checked plan](../review-remediation-plan.md) owns original findings and acceptance criteria; [V4 evidence](../ledger-integrity-v4.md) supersedes its step-1 implementation status. The [independent review](../review-by-harvey-with-claude.md) now includes the 2026-09-10 fact-check corrections; the plan owns remaining acceptance criteria.
+Steps 1–2 are implemented and verified locally above; later items remain pending. The [fact-checked plan](../review-remediation-plan.md) owns original findings and acceptance criteria; [V4 evidence](../ledger-integrity-v4.md) supersedes its step-1 implementation status. The [independent review](../review-by-harvey-with-claude.md) now includes the 2026-09-10 fact-check corrections; the plan owns remaining acceptance criteria.
 
 | Planned order | Remaining work and evidence limits |
 | --- | --- |
 | 1. Database validation | **Implemented/verified locally:** V4, preserved invariants, full/preflight audit, TEMP hardening, deadline tests and long-history benchmarks. Controlled migration before rollout, audit scheduling/alerts and production latency targets remain operational adoption work. Generic triggers do not enforce all operation semantics; inverse refunds are audit-checked, not commit-enforced. |
-| 2. Receipt privacy and authorization | Project caller-safe fresh **and stored** transfer receipts; add real controller authorization and configured JWT-decoder tests. Current `recipientBalanceAfter` leak is a static data-flow finding. |
+| 2. Receipt privacy and authorization | **Implemented/verified locally:** sender response projection covers fresh/stored replay; 81 controller authorization/input cases, 12 real signed-JWT HTTP cases and required issuer/audience startup validation. Production identity-provider integration remains deployment work. [Evidence](../api-security-step2.md). |
 | 3. Errors and audit fields | Separate known 409 conflicts, transient 503 failures and unexpected internal failures; preserve headers and useful field errors; add transfer/refund history relationships, rejection cases and accurate rate-limit retry guidance. |
 | 4. Messaging | Verify production replication/minimum ISR; wire topic configuration; validate exact event types/ranges; durable poison quarantine/replay; listener/offset recovery and relay lease tests. Current single-copy acknowledgements are a durability risk, not a reproduced broker-loss test. |
 | 5. Promotion contention | Early rejection for already-claimed/exhausted campaigns; retain locked authoritative checks and atomic credit/capacity for every possible winner. |

@@ -1,6 +1,7 @@
 package com.example.walletledger.wallet.api;
 
 import com.example.walletledger.idempotency.CommandExecutor;
+import com.example.walletledger.idempotency.CommandResult;
 import com.example.walletledger.wallet.application.WalletService;
 import com.example.walletledger.wallet.domain.BusinessException;
 import jakarta.validation.Valid;
@@ -124,20 +125,22 @@ public class WalletController {
       @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 200) String key,
       @Valid @RequestBody TransferRequest body) {
     UUID sender = player(caller);
-    return execute(
-        caller,
-        key,
-        "transfer:" + sender,
-        body,
-        () ->
-            wallets.transfer(
-                sender,
-                body.recipientId(),
-                body.amount(),
-                caller.getName(),
-                body.reason(),
-                body.source(),
-                body.reference()));
+    var result =
+        commands.execute(
+            caller.getName(),
+            key,
+            "transfer:" + sender,
+            body,
+            () ->
+                wallets.transfer(
+                    sender,
+                    body.recipientId(),
+                    body.amount(),
+                    caller.getName(),
+                    body.reason(),
+                    body.source(),
+                    body.reference()));
+    return response(TransferReceipt.forPlayer(result));
   }
 
   @PostMapping("/transactions/{transactionId}/refunds")
@@ -170,6 +173,10 @@ public class WalletController {
       Object payload,
       Supplier<Map<String, Object>> action) {
     var result = commands.execute(caller.getName(), key, operation, payload, action);
+    return response(result);
+  }
+
+  private ResponseEntity<?> response(CommandResult result) {
     return ResponseEntity.status(result.status())
         .contentType(
             result.status() >= 400

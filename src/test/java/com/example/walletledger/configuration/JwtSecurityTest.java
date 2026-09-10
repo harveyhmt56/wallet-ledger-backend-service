@@ -23,7 +23,11 @@ import org.springframework.web.bind.annotation.*;
 
 @WebMvcTest(
     controllers = JwtSecurityTest.Probe.class,
-    properties = "ledger.rate-limit.enabled=false")
+    properties = {
+      "ledger.rate-limit.enabled=false",
+      "spring.security.oauth2.resourceserver.jwt.issuer-uri=https://issuer.example.test",
+      "spring.security.oauth2.resourceserver.jwt.audiences=wallet-api"
+    })
 @Import({SecurityConfiguration.class, JwtSecurityTest.Probe.class})
 @ActiveProfiles("jwt-test")
 class JwtSecurityTest {
