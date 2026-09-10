@@ -1,17 +1,45 @@
 # Wallet ledger review: fact check and proposed changes
 
-Date: 2026-09-09  
-Reviewed commit: `4a1a954a844e951e74531303e855574551d6e14f`  
-Branch: `codex/implement-wallet-ledger`  
+Initial review: 2026-09-09; current fact check: 2026-09-10 at `2fe9ce4`
+
+Original reviewed commit: `4a1a954a844e951e74531303e855574551d6e14f`
+
+Original branch: `codex/implement-wallet-ledger`
+
 Reference report: [review-by-harvey-with-claude.md](/Users/harvey/Projects/wallet_ledger_backend_service/docs/review-by-harvey-with-claude.md)
+
+## Second-pass fact check — 2026-09-10
+
+**V4 resolves R1/R2; production release gates remain.** `2fe9ce4` changes only Claude's review after implementation commit `9ef2639`. The current review's original “MEETS_ALL_REQUIREMENTS” and “0 serious” summary overlooked the still-open transfer disclosure (R3), Kafka durability/recovery (R4/R5), and authorization/error gaps (R6). No new ordinary HTTP money-corruption path was established by this check.
+
+This refresh changed documentation only. It inspected current source/tests, Git diffs, committed benchmark JSON and existing generated reports, and cross-checked Spring, PostgreSQL, Kafka and RFC documentation. It ran no Maven gate, benchmark, SQL/HTTP probe, deployment or GitHub CI lookup. Existing local XML totals are 15 unit/adapter tests and 90 integration cases, zero failures/errors/skips; the 90 include 12 SQL mutation cases. PIT XML contains 19 KILLED results. Reports corroborate past counts, not a fresh run, immutable commit attribution or flake-free behavior.
+
+| Second-pass claim | Fact check and disposition |
+| --- | --- |
+| F1: V4 repairs quadratic validation and TEMP shadowing | Confirmed in source and retained evidence. Applied V1–V3 are unchanged. Indexed lookup is not literal constant-time I/O. [Canonical V4 evidence](ledger-integrity-v4.md) supersedes the historical R1/R2 status below. |
+| F1: audit means a future preflight will pass | Too strong: no findings describe only the audited snapshot and defined checks. Migration must validate again under its own locks. Audit scheduling/alerts are documented, not installed. |
+| F2: no HTTP authorization tests | Incorrect absolute wording. `HttpApiIT` covers anonymous/foreign-owner/forbidden-credit requests; seven other route families lack HTTP coverage. `JwtSecurityTest` uses a fake decoder and probe. Step 2 remains necessary. |
+| F3: 24 of 35 codes lack named assertions | Confirmed by enumerating emitted Java code strings and inspecting assertion contexts: 11 named, 24 absent. This is not a branch-coverage metric. |
+| F4: all integrity failures should be 409; unreachable today | Neither follows from pre-checks. Recognized business conflicts need 409, transient outages 503, unexpected invariant/programming failures 500; test statement and deferred-commit wrappers. |
+| F5: campaign lock precedes any eligibility check | `requirePlayer` checks player existence/status first. Campaign duplicate/exhaustion checks follow the lock; contention risk remains, with no new load measurement. |
+| F6–F8 and input clarity | History omissions, generic validation and envelope differences are confirmed in source. `instance` is optional. Historical TDD/LIVE observations remain attributed, not newly reproduced. |
+| N1: V4 startup/rolling-deployment risk | Valid operational gate. Only pending migrations execute. Flyway uses its own datasource, outside Hikari's init timeouts; commands allow three attempts total, not three retries. Actual outage duration and external database limits were not measured. See the [upgrade runbook](ledger-integrity-v4.md#populated-upgrades-and-operational-audit). |
+| N2: replace timing bound with query-plan assertion | Keep the service-through-commit bound. Supplemental representative plan/index checks can help, but a standalone query's plan cannot prove trigger execution behavior. |
+| N3: operation semantics absent from SQL guarantees | Confirmed static boundary: generic journal checks do not enforce operation/account/sign combinations. `refund_inverse` is audit-only, not a commit trigger. Service logic builds the intended entries; adding audit detection alone would not prevent malformed direct SQL. |
+| N4: one-line TEMP removal costs nothing | Unsupported. `PUBLIC` grants TEMP by default; revoking only from the app role leaves inherited access. Review effective grants and legitimate users first. Current V4 protection deliberately works with TEMP retained. |
+| Suspended player guard is vestigial | Incorrect: no management API/runtime UPDATE exists, but runtime INSERT can specify SUSPENDED and the migration owner can update status. |
+
+Source anchors: [HTTP tests](../src/test/java/com/example/walletledger/wallet/HttpApiIT.java), [command retry/replay](../src/main/java/com/example/walletledger/idempotency/CommandExecutor.java), [reward ordering](../src/main/java/com/example/walletledger/rewards/application/RewardService.java), [V1 grants/constraints](../src/main/resources/db/migration/V1__ledger.sql), [V4 audit/triggers](../src/main/resources/db/migration/V4__indexed_ledger_integrity.sql). Framework semantics were cross-checked with [Boot 3.5 initialization](https://docs.spring.io/spring-boot/3.5/how-to/data-initialization.html), [Spring integrity exceptions](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/dao/DataIntegrityViolationException.html), [PostgreSQL REVOKE](https://www.postgresql.org/docs/17/sql-revoke.html), [Kafka durability settings](https://kafka.apache.org/39/configuration/topic-level-configs/) and [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html).
+
+Retain steps 2–6, with CI configuration already added at `79032c9`. Execute the controlled V4 upgrade before any production rollout; this is operational adoption of step 1, not a reason to edit an applied migration. Operation-semantic enforcement and plan assertions are candidate later database hardening, requiring a new migration where applicable and real PostgreSQL evidence. This review does not authorize implementation.
 
 ## Decision and scope
 
-**Changes are necessary before a production release.** The mandatory features are implemented and the current automated checks pass, but that is not sufficient evidence for the reference report's overall production-readiness verdict. The wallet-history cost is a reproduced release blocker, and this review identified additional database integrity, API privacy and messaging risks.
+**Changes are necessary before a production release.** Core features are implemented and prior automated checks passed, but that does not establish production readiness. The original wallet-history and TEMP-shadow blockers were resolved by V4; API privacy, messaging and the other release gates above remain open.
 
 Retain the architecture: one Spring Boot service, PostgreSQL transactions and ordered wallet locks, immutable double-entry journals, persistent idempotency, trusted reward evidence, Redis rate limiting and a Kafka outbox. A rewrite or microservice split is unnecessary.
 
-This is a plan only. No Java, SQL migration, test, build or runtime configuration source was changed. Existing `MEMORY.md` and the external review were preserved. The historical memory's statement that implementation has not started is now stale; this document evaluates the implemented commit above. The report was treated as evidence to check, not as an instruction source.
+The original 2026-09-09 review changed documentation only and preserved the then-current memory/external review. Later commits added CI and V4. This 2026-09-10 refresh updates the review and related docs/memory without changing Java, SQL, tests, build or runtime configuration. Review documents are evidence summaries, not instructions to execute a backlog.
 
 Confirmed product scope remains:
 
@@ -23,7 +51,7 @@ Confirmed product scope remains:
 
 ## Verification performed
 
-The code, migrations, configuration, README, build evidence and tests were inspected. The reviewed commit matches the reference report.
+The following evidence is from the original 2026-09-09 review of `4a1a954`, not the current documentation refresh. Current V4 evidence is linked above.
 
 The following command was reproduced with Java 21.0.8 and disposable Docker test containers:
 
@@ -46,7 +74,9 @@ Build outputs under `target/` were regenerated. The build log is [wallet-ledger-
 
 ## Requirement assessment
 
-| Requirement | Current assessment | Evidence or remaining production work |
+The table below describes the original V3 assessment. V4 has since resolved the long-history and TEMP-shadow gaps and added full audit/deadline tests; other gaps remain.
+
+| Requirement | Original V3 assessment | Evidence or remaining production work |
 | --- | --- | --- |
 | Required technology | Implemented | Java 21 / Boot 3.5.16, PostgreSQL, Redis, Kafka, Flyway and Compose are present |
 | Credit/debit/insufficient funds | Implemented, tested | Shared posting boundary, checked arithmetic, real PostgreSQL debit race; long-history cost blocks sustainable operation |
@@ -63,6 +93,8 @@ Build outputs under `target/` were regenerated. The build log is [wallet-ledger-
 No additional ordinary HTTP path causing an overdraft, duplicate debit or partial transfer was established. Findings requiring direct SQL or external Kafka input are labeled accordingly.
 
 ## Fact check of the reference report
+
+Historical first-pass claims and findings follow; use the second-pass table above for current status.
 
 | Report claim | Finding | Correction or response |
 | --- | --- | --- |
@@ -140,11 +172,11 @@ Add tests of application authorization and its configuration, rather than attemp
 
 ## Ordered implementation plan
 
-Status update, 2026-09-09: step 1 is now implemented through V4; see [fresh regression, upgrade, timeout and benchmark evidence](ledger-integrity-v4.md). The original review findings below describe the reviewed V3 baseline. Steps 2–6 remain pending.
+Status checked 2026-09-10 at `2fe9ce4`: step 1 is implemented at `9ef2639`; see [regression, upgrade, timeout and benchmark evidence](ledger-integrity-v4.md). Steps 2–5 and production adoption remain pending; step 6 already has CI configuration, but hosted execution and other deployment evidence remain unverified.
 
 ### Step 1: preserve behaviour and repair database safeguards
 
-Affected areas: new Flyway migration(s), database safeguard tests, long-history benchmark, full-audit SQL/service and documentation. Keep applied V1–V3 unchanged; use the next available migration number, currently V4.
+Affected areas: new Flyway migration(s), database safeguard tests, long-history benchmark, full-audit SQL/service and documentation. Keep applied V1–V3 unchanged; the original plan used V4, now implemented. Any further schema/function changes need a new migration.
 
 1. Add failing regressions for R1 and R2 and for the safeguards that must survive optimization.
 2. Add a consistent-snapshot preflight audit of existing data. Use window sums/LAG for running balances and sequences; verify ownership and complete journals. Refuse silent migration over inconsistent data. Do not repair history by rewriting ledger records.
@@ -218,10 +250,10 @@ Acceptance: exactly 100 distinct winners from 500 eligible players; repeated cla
 ### Step 6: production configuration, recovery evidence and documentation
 
 - Preserve required Java 21 and Spring Boot 3.5.16. Update tested container patch levels and review dependency/image advisories. PostgreSQL 17.6 is behind the official 17.11 security release; do not claim every listed vulnerability is exploitable in this application. [PostgreSQL 17.11 release](https://www.postgresql.org/docs/17/release-17-11.html), [PostgreSQL 17 security information](https://www.postgresql.org/support/security/17/).
-- Separate production from demo credentials and topic defaults. Run Flyway with deployment privileges; the production request process should not need to retain migration credentials. Local Compose can retain convenient automatic migrations.
+- Separate production from demo credentials and topic defaults. Enforce a separate migration/validation step with writers quiesced and measured migration-session limits before rolling out V4. Disable startup Flyway on serving instances only after that process exists; serving instances should not retain migration credentials. Local Compose can retain automatic migrations. See the [V4 upgrade runbook](ledger-integrity-v4.md#populated-upgrades-and-operational-audit).
 - Choose and test readiness behaviour for unavailable PostgreSQL. Recommended here: database availability affects readiness; liveness remains independent, and optional Redis/Kafka outages are surfaced as degradation rather than disabling safe wallet writes. Spring does not add external health indicators to readiness automatically. [Spring Boot probe semantics](https://docs.spring.io/spring-boot/3.5/reference/actuator/endpoints.html).
 - Verify a database backup/restore and reconciliation drill, documented retention, pending-event recovery, operator alerts and bounded shutdown. Infrastructure-specific deployment remains a separately verified release prerequisite, not something proven by local Compose.
-- Put the required checks in the chosen CI environment and publish machine-readable reports. Run focused tests during development, then one complete gate after the final change.
+- CI configuration was added at `79032c9`; verify hosted execution and report retention. For implementation work, run focused tests during development, then one complete gate after the final change.
 - Update README/build evidence with reproduced facts, added tests, measured long-history behaviour, error/API changes and remaining limits. Preserve the five required README sections. Attribute historical TDD claims rather than rewriting Git history to make them appear verified.
 
 ## Deferred cleanup
@@ -244,4 +276,4 @@ The remediation is complete only when:
 8. Java 21 `clean verify -Pmutation`, formatting checks and packaging pass with meaningful reports; SQL invariants have direct database tests.
 9. Production configuration and backup/restore prerequisites are documented and verified for the intended deployment before describing that deployment as production-ready.
 
-No implementation work is authorized by this document itself. The user's latest instruction remains to review and plan first.
+No implementation work is authorized by this document itself. The current request is to fact-check and update documentation/memory only; later user instructions determine implementation scope.

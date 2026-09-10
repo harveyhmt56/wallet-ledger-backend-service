@@ -1,6 +1,6 @@
 # Committed implementation map
 
-Checked: 2026-09-09 against baseline `79032c9` plus V4 remediation; [baseline and retrieval rules](../../MEMORY.md).
+Checked: 2026-09-10 at `2fe9ce4` (V4 implementation `9ef2639`), source inspection only; [baseline and retrieval rules](../../MEMORY.md).
 Read [pending gaps](verification.md#pending-remediation) alongside this map before making safety/readiness claims.
 
 ## Entry points
@@ -42,6 +42,7 @@ Spring's [nested propagation documentation](https://docs.spring.io/spring-framew
 
 - Provisioned `wallet_id` equals player UUID; account UUID is separate. Migration and request roles are separated by [role bootstrap](../../docker/postgres/01-roles.sql) and grants; runtime cannot update/delete/truncate journal history. V4 qualifies persistent relation/composite-type references and pins all integrity/audit functions to `pg_catalog, public, pg_temp` with invoker privileges. TEMP-shadow regressions pass with TEMP privileges retained.
 - Deferred checks cover complete journals, ownership, contiguous sequences and running balances. V4 checks each new player entry's predecessor and the final stored wallet against its tail through the existing unique sequence index; multiple postings in one transaction are supported. The preflight establishes a valid immutable base before incremental checks replace V1's quadratic scans. See [V4 design/evidence](../ledger-integrity-v4.md) and PostgreSQL [constraint-trigger timing](https://www.postgresql.org/docs/17/sql-createtrigger.html).
+- Generic commit checks do not enforce CREDIT/DEBIT/TRANSFER account-kind/sign combinations. The full audit detects inverse-refund violations, but no commit trigger enforces that relationship. `WalletService` constructs the intended postings; see [current boundary assessment](../review-remediation-plan.md#second-pass-fact-check--2026-09-10).
 - Balance reads use PostgreSQL. History uses descending wallet sequence, exclusive `< cursor`, default limit 20, range 1–100, `items`/`nextCursor`. Current history lacks refund-origin and transfer-counterparty fields.
 - `GET /v1/admin/reconciliation` remains a read-only `REPEATABLE_READ` aggregate balance comparison. `public.audit_ledger_integrity()` separately audits ownership, metadata, sequence/running balances, wallet totals, journals and inverse refunds in one snapshot. [Maintenance script](../../scripts/audit-ledger.sql) bounds execution and fails on findings; [deployment scheduling/alerts](../ledger-integrity-v4.md#populated-upgrades-and-operational-audit) require the operator's job runner.
 
@@ -50,14 +51,15 @@ Spring's [nested propagation documentation](https://docs.spring.io/spring-framew
 - [README API table](../../README.md#how-to-run-setup-database-and-tests) owns route/body/demo details. Mutations return 200 on success and require a nonblank `Idempotency-Key` of at most 200 characters. Strict JSON rejects fractions, scalar coercion and unknown properties.
 - SERVICE/ADMIN: provision, credit, debit, refund and authorized reads. PLAYER: own reads, transfer from authenticated subject, daily/reward/promotion claims. Completion evidence is SERVICE-only; reconciliation is ADMIN-only.
 - Local credentials are demo-only; nonlocal configuration uses JWT `roles` and subject. Issuer/audience are deployment settings; real-decoder coverage remains pending.
-- Daily state, trusted completion claims and promotion capacity commit with the credit; applied policy versions are stored. Promotion locks the campaign before duplicate/exhaustion checks. See [decisions](decisions.md) for policy scope.
+- Daily state, trusted completion claims and promotion capacity commit with the credit; applied policy versions are stored. Promotion validates player existence/active status before locking the campaign, then checks campaign enabled/duplicate/exhaustion state. See [decisions](decisions.md) for policy scope.
 - Error envelopes contain stable codes, but `ApiProblems` maps every handled `DataAccessException` to 503 and generic validation omits field details. Transfer receipts currently expose `recipientBalanceAfter`, including stored replay; both are pending fixes.
 
 ## Messaging, Redis and runtime
 
 - Balance event v1: `eventId`, `walletId`, `walletSequence`, `journalTransactionId`, `delta`, `balanceAfter`, `reason`, `occurredAt`, `schemaVersion`. Topic/key: `wallet.balance-changed.v1` / wallet UUID.
 - Relay leases up to 100 rows for 60 seconds using `SKIP LOCKED`; sends outside money transactions; marks delivery after Kafka acknowledgement with lease-token fencing. Duplicates/reordering remain possible. The configured `ledger.outbox.topic` is not wired into the hardcoded topic constant.
-- Consumer commits event-ID deduplication and projection together; only newer sequences replace the absolute balance. It never sums out-of-order deltas. Default error handler retries indefinitely; no durable poison-event quarantine exists. Topic creation uses three partitions and replication one, without a local-only profile restriction.
+- Consumer commits event-ID deduplication and projection together; only newer sequences replace the absolute balance. It never sums out-of-order deltas. Retryable listener errors use unlimited retry; Spring Kafka retains default fatal classifications. No durable poison-event quarantine exists. Topic creation uses three partitions and replication one, without a local-only profile restriction.
 - Redis Lua counter/expiry defaults to 120 authenticated requests per 60 seconds; Actuator bypasses rate limiting. Redis failures fail open and increment `wallet.rate_limit.degraded`. HTTP `Retry-After` is currently hardcoded to 60.
+- Startup Flyway is enabled with a separate migration datasource; it does not inherit Hikari init timeouts. Only pending migrations run. Production must enforce a controlled migration/validation step before disabling startup Flyway on serving instances; see the [upgrade runbook](../ledger-integrity-v4.md#populated-upgrades-and-operational-audit).
 - [application.yml](../../src/main/resources/application.yml) owns timeouts, metrics, health probes and ECS logging; [local profile](../../src/main/resources/application-local.yml) changes demo passwords/logging. Correlation IDs come from [CorrelationFilter](../../src/main/java/com/example/walletledger/configuration/CorrelationFilter.java).
 - [pom.xml](../../pom.xml) pins Java 21 / Boot 3.5.16. [Wrapper](../../.mvn/wrapper/maven-wrapper.properties): Maven 3.9.11. [Compose](../../compose.yaml)/[Dockerfile](../../Dockerfile): PostgreSQL 17.6, Redis 7.4.5, Kafka 3.9.1, Temurin 21.0.8+9. These are checked-in pins, not claims of current patch suitability or production readiness.

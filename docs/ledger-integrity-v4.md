@@ -1,6 +1,6 @@
 # Ledger integrity V4: operation and evidence
 
-Checked 2026-09-09 on baseline `79032c9` plus the V4 remediation change. Java 21.0.8 / Spring Boot 3.5.16 remain unchanged. This implements step 1 of the [remediation plan](review-remediation-plan.md#step-1-preserve-behaviour-and-repair-database-safeguards); later remediation steps remain open.
+Implementation evidence recorded 2026-09-09 for V4, committed at `9ef2639`. Documentation/source fact check: 2026-09-10 at `2fe9ce4`, without rerunning application tests or benchmarks. Java 21.0.8 / Spring Boot 3.5.16 remain unchanged. This implements step 1 of the [remediation plan](review-remediation-plan.md#step-1-preserve-behaviour-and-repair-database-safeguards); later remediation steps remain open.
 
 ## Database boundary
 
@@ -10,9 +10,24 @@ This is an inductive check: the migration audits existing history, each new entr
 
 All four integrity/audit functions use invoker privileges and `search_path = pg_catalog, public, pg_temp`. Persistent relations and composite row types are explicitly qualified. The fix works while `wallet_app` still has TEMP privilege, as the regressions demonstrate. No `SECURITY DEFINER` privilege was introduced. PostgreSQL explains [temporary-schema precedence and trusted function search paths](https://www.postgresql.org/docs/17/sql-createfunction.html#SQL-CREATEFUNCTION-SECURITY).
 
+The database boundary is narrower than the service's operation rules: generic journal triggers do not enforce CREDIT/DEBIT/TRANSFER account kinds and signs. The audit's `refund_inverse` detects invalid reversals, but no commit trigger enforces that inverse relationship. `WalletService` supplies these semantics; a clean audit means no findings within its defined checks, not proof of every business rule. See [N3 and current fact check](review-remediation-plan.md#second-pass-fact-check--2026-09-10).
+
+Optional TEMP privilege reduction must account for grants through `PUBLIC` and role memberships; revoking only a direct app-role grant is insufficient. Review dependent users before changing effective privileges. V4's qualified names and trusted search paths remain required. See [PostgreSQL REVOKE](https://www.postgresql.org/docs/17/sql-revoke.html).
+
 ## Populated upgrades and operational audit
 
 V4 takes `SHARE ROW EXCLUSIVE` locks on player, account, wallet, journal and entry tables, runs preflight, and replaces functions in the same Flyway transaction. Writers cannot change the audited base before installation commits. Plan a maintenance window with writers quiesced: preflight scans all history and may wait behind active writers. A failed preflight raises SQLSTATE `23514`, naming an issue and entity; the migration rolls back and V3/data remain unchanged. Investigate the source of corruption and preserve evidence; do not skip preflight or rewrite ledger history. The waiting-writer test proves that V4 audits an in-flight writer's committed data. See PostgreSQL's [table lock modes](https://www.postgresql.org/docs/17/explicit-locking.html#LOCKING-TABLES).
+
+The checked-in application enables startup Flyway using its own datasource. Hikari's request-connection timeouts therefore do not bound the migration session; external database/role limits may apply. Boot checks pending migrations on each startup, without rerunning an already-applied V4. [Boot 3.5 initialization](https://docs.spring.io/spring-boot/3.5/how-to/data-initialization.html).
+
+Production upgrade procedure (documented, not implemented by a deployment pipeline):
+
+1. Quiesce all writers and drain in-flight money transactions before the migration. A rolling application restart alone does not enforce this.
+2. Run Flyway migrate/validate with the deployment role and the unchanged versioned migration files. Set migration-session lock/statement/transaction limits from a representative populated-data rehearsal; request-pool limits are not inherited. Investigate any failure before resuming rollout.
+3. Confirm V4 is applied and the bounded audit succeeds, then start/roll serving instances with `SPRING_FLYWAY_ENABLED=false`. Enforce the separate migration step before disabling startup migration; do not merely skip V4 or leave the schema unverified. Keep migration credentials out of serving instances.
+4. Restore writes after validation and install the audit schedule/alerts below. Verify this procedure in the intended deployment; local tests do not establish rolling-deploy availability.
+
+If old instances continue writing during preflight, their requests can wait or time out. `CommandExecutor` permits three attempts total (two retries) for translated transient failures; an outage duration is not established by this static analysis. Ordinary SELECT and ROW SHARE table locks are compatible with preflight; writes need conflicting ROW EXCLUSIVE locks.
 
 `public.audit_ledger_integrity()` is a separate read-only SQL function. One statement uses one snapshot and window `SUM`/`LAG`, checking ownership, metadata, sequence continuity, running balances, wallet totals, journal completeness and inverse full credit/debit refunds. These checks supplement the schema's existing foreign keys, checks and uniqueness constraints. It returns `(issue, entity_id)` rows; no rows means no findings. See [window frames](https://www.postgresql.org/docs/17/functions-window.html) and [STABLE function snapshots](https://www.postgresql.org/docs/17/xfunc-volatility.html).
 
@@ -70,4 +85,4 @@ The full gate reports **15 unit/adapter tests, 90 integration cases, zero failur
 
 `LedgerSqlMutationIT` additionally evaluates **12 targeted SQL mutants, all killed (100%)**, using an isolated schema and the same integrity acceptance examples. Each example passes an unmodified control before the mutant is installed; invalid edits, setup errors, survivors or unexpected infrastructure failures fail the harness. Mutants remove metadata/ownership/predecessor/tail checks, change first/intermediate/numeric arithmetic, compare intermediate wallet images, remove journal/header protections, restore unsafe name resolution or allow history updates. This complements PIT; it is not exhaustive automatic mutation coverage of every SQL/audit branch.
 
-Fresh final machine-readable reports are under `target/surefire-reports`, `target/failsafe-reports`, and `target/pit-reports`; CI already retains them. Local full-gate log: `/private/tmp/ledger-v4-final-verify.log`. Earlier red logs: `/private/tmp/ledger-integrity-v3-red-final.log`, `/private/tmp/v4-upgrade-red.log`, `/private/tmp/wallet-history-v3-red.log`. These temporary paths are ephemeral. This document and retained benchmark JSON record observations; GitHub-hosted execution, deployment upgrades and production load were not performed.
+The original final machine-readable reports were generated under `target/surefire-reports`, `target/failsafe-reports`, and `target/pit-reports`; CI is configured to retain available reports, but hosted execution/upload remain unverified. Local full-gate log: `/private/tmp/ledger-v4-final-verify.log`. Earlier red logs: `/private/tmp/ledger-integrity-v3-red-final.log`, `/private/tmp/v4-upgrade-red.log`, `/private/tmp/wallet-history-v3-red.log`. These temporary paths are ephemeral. This document and retained benchmark JSON record observations; GitHub-hosted execution, deployment upgrades and production load were not performed.

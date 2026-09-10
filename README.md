@@ -32,7 +32,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v21)
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Configuration uses `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MIGRATION_USERNAME`, `MIGRATION_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, and `KAFKA_BOOTSTRAP_SERVERS`. Local defaults are in `application-local.yml`. Provision separate database roles outside Compose for other environments. Flyway connects as `wallet_migration`; request processing uses `wallet_app`, which cannot rewrite or truncate journal history or create schema objects. `V1` creates the ledger, `V2` rewards, and `V3` the example consumer projection. `V4` audits existing data, replaces historical-prefix validation with indexed predecessor/tail checks, and hardens integrity functions. Plan a maintenance window for its write-blocking preflight; inconsistent data aborts the upgrade. See [V4 operation and evidence](docs/ledger-integrity-v4.md). Existing permanent databases must receive new versioned migrations, never edited applied migrations.
+Configuration uses `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MIGRATION_USERNAME`, `MIGRATION_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, and `KAFKA_BOOTSTRAP_SERVERS`. Local defaults are in `application-local.yml`. Provision separate database roles outside Compose for other environments. Flyway connects as `wallet_migration`; request processing uses `wallet_app`, which cannot rewrite or truncate journal history or create permanent objects in the public schema; database TEMP privilege remains available. `V1` creates the ledger, `V2` rewards, and `V3` the example consumer projection. `V4` audits existing data, replaces historical-prefix validation with indexed predecessor/tail checks, and hardens integrity functions. Plan a maintenance window for its write-blocking preflight; audit findings abort the upgrade. Startup Flyway is enabled by default. Production needs an enforced separate migration/validation step with writers quiesced before disabling startup Flyway on serving instances; the repository does not implement that deployment pipeline. See [V4 operation and evidence](docs/ledger-integrity-v4.md). Existing permanent databases must receive new versioned migrations, never edited applied migrations.
 
 ```sh
 ./mvnw test                         # fast unit and HTTP security adapter tests
@@ -70,7 +70,7 @@ curl --fail-with-body -u service:service-password \
 
 The seeded mission ID is `20000000-0000-0000-0000-000000000001` (100 units, `mission-v1`). The seeded promotion is `30000000-0000-0000-0000-000000000001` (25 units, 100 distinct players, `promotion-v1`). Definitions are seeded for the assignment; there is no policy-management API.
 
-Mutations return HTTP 200 receipts. Errors use `application/problem+json` with a stable `code`: 400 invalid input, 401/403 authentication/authorization, 404 missing resource, 409 business conflict, 429 request quota, and 503 retryable database failure. Replays include the original `balanceAfter`; use the balance endpoint for current funds.
+Mutations return HTTP 200 receipts. Errors use `application/problem+json` with a stable `code`: 400 invalid input, 401/403 authentication/authorization, 404 missing resource, 409 business conflict, 429 request quota, and 503 for every `DataAccessException` handled by the current advice, including nontransient failures. Error classification remains a known gap; a 503 alone does not prove that the failure is transient. Replays include the original `balanceAfter`; use the balance endpoint for current funds.
 
 ## Design decisions and trade-offs
 
@@ -86,7 +86,7 @@ Health probes are public; other Actuator endpoints require admin access. Logs ca
 
 ## Concurrency & Idempotency
 
-The outer command transaction reserves `(authenticated actor, key)`, checks a SHA-256 fingerprint of operation/target and recursively sorted JSON business content, executes the action, and stores its response before committing. Concurrent key copies coordinate through PostgreSQL uniqueness. Changed content returns `IDEMPOTENCY_KEY_REUSED`. A savepoint rolls back rejected business work while retaining its completed rejection response. Nested wallet/reward transactions also use savepoints, protecting direct service calls. Infrastructure failures roll back the reservation and all business writes. Selected transient database failures retry at most three times, each with a fresh transaction.
+The outer command transaction reserves `(authenticated actor, key)`, checks a SHA-256 fingerprint of operation/target and recursively sorted JSON business content, executes the action, and stores its response before committing. Concurrent key copies coordinate through PostgreSQL uniqueness. Changed content returns `IDEMPOTENCY_KEY_REUSED`. A savepoint rolls back rejected business work while retaining its completed rejection response. Nested wallet/reward transactions also use savepoints, protecting direct service calls. Infrastructure failures roll back the reservation and all business writes. Selected transient database failures allow at most three attempts (two retries), each with a fresh transaction.
 
 Lock order is idempotency reservation, business state/reference lock, then wallets in ascending UUID byte/text order. Wallet locks serialize conflicting debits and transfers use the same ordering in both directions. Immutable completion/refund identities use transaction advisory locks. Reference uniqueness is `(operation, source, reference)` across wallets; source systems must issue globally unique references within that scope. Entitlement constraints independently enforce one daily claim per player/date, one claim per completion, one player per promotion, and one reversal per original.
 
@@ -94,7 +94,7 @@ Connections use a five-second lock timeout and fifteen-second statement timeout.
 
 ## Testing approach
 
-Executable JUnit acceptance examples assert public API and database outcomes; Gherkin is not required by this repository. TDD began with expected missing-behavior failures, then minimal implementations. Tests cover exact arithmetic, UTC streak boundaries, authorization, validation, lost-response replay, real HTTP requests to two application instances, 100 concurrent copies of one key, opposing transfers, concurrent refunds, stable cursor pages and ledger reconciliation.
+Executable JUnit acceptance examples assert public API and database outcomes; Gherkin is not required by this repository. The original build notes report a red-green TDD process; the squashed implementation history cannot independently establish that sequence. Tests cover exact arithmetic, UTC streak boundaries, authorization, validation, lost-response replay, real HTTP requests to two application instances, 100 concurrent copies of one key, opposing transfers, concurrent refunds, stable cursor pages and ledger reconciliation.
 
 The required debit race starts 100 independent operations of 10 against 500 and asserts exactly 50 successes, 50 rejections and balance zero. The quota race starts 500 players against 100 slots and checks exactly 100 distinct winners. Database tests explicitly hold a wallet lock, reject direct ledger corruption, and inject failures during outbox/claim persistence to prove atomic rollback. PostgreSQL is real; no H2 substitute is used. Kafka tests pause the real broker and replay delivery after a simulated acknowledgement/marking crash; Redis tests inspect the real counter TTL.
 
@@ -102,12 +102,15 @@ PIT targets the money, daily reward and sequence-projection domain policies with
 
 ## Assumptions & limitations
 
+- Core features and V4's database repair are implemented; production readiness remains unestablished. [Current fact check and remaining release gates](docs/review-remediation-plan.md#second-pass-fact-check--2026-09-10) cover transfer receipt privacy, API/JWT coverage, error clarity, messaging and deployment evidence.
+- Transfer receipts currently expose `recipientBalanceAfter`, including stored replay; this privacy defect remains pending. History omits refund-origin and transfer-counterparty fields.
+- Service code enforces operation/account/sign and inverse-refund semantics. Generic commit triggers do not enforce all of those relationships; `refund_inverse` is an audit check. See [V4's database boundary](docs/ledger-integrity-v4.md#database-boundary).
 - One `COIN` currency in Java `long` / PostgreSQL `BIGINT`; maximum player balance is `Long.MAX_VALUE`.
 - The server's UTC date defines daily claims. Consecutive days grant `10 × streak day`; missed days reset the streak.
 - Trusted completion evidence determines eligibility and server definitions determine amounts. Clients cannot mint arbitrary currency.
 - Only full credit/debit reversals are supported. Transfer/partial reversals are excluded. Overdrawing reversals fail; reversals do not restore entitlements or promotion slots.
 - Idempotency, ledger and consumer deduplication records are retained for the project lifetime. Archival is future work.
 - One database owns all wallets. Hot wallets and campaign rows serialize writes. This design does not implement cross-database transfers or high availability.
-- Kafka delivery is at least once and may be reordered. The example consumer is a balance snapshot projection, not an exactly-once delivery claim. Poison records need operator intervention; no dead-letter workflow is supplied.
+- The outbox relay permits at-least-once publication and reordering. Automatic topic creation currently requests replication 1 outside a local-only restriction, so `acks=all` can acknowledge a single copy; production replication/minimum ISR must be provisioned and verified. The example consumer is a balance snapshot projection, not an exactly-once delivery claim. Poison records need operator intervention; no dead-letter workflow is supplied.
 - Compose is a reproducible local environment. Production identity, secrets, backups, broker replication and deployment controls must be supplied by the deployment environment.
 - Boot 3.5.16 is retained as required. It is the final open-source release of the 3.5 line; see the [official release lifecycle notice](https://spring.io/blog/2026/06/25/spring-boot-3-5-16-available-now/).
