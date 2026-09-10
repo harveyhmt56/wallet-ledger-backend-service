@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Last checked: 2026-09-09 against baseline `79032c9` plus the V4 remediation change; see [fresh evidence](docs/memory/verification.md).
+Last checked: 2026-09-10 at `2fe9ce4` (V4 implementation `9ef2639`); documentation/source fact check only. See [evidence and limits](docs/memory/verification.md).
 This is a retrieval index and source-backed snapshot, not an instruction to execute a backlog.
 
 ## Requirement:
@@ -12,11 +12,11 @@ This is a retrieval index and source-backed snapshot, not an instruction to exec
 
 ## Current state
 
-- Base implementation is `f4e6b1a`; reviews followed, and `79032c9` added CI. Remediation step 1 now adds V4 while preserving V1–V3.
+- Base implementation is `f4e6b1a`; reviews followed, and `79032c9` added CI. `9ef2639` implements step 1 through V4 while preserving V1–V3; `2fe9ce4` revises the independent review.
 - Java 21 / Spring Boot 3.5.16; one Spring JDBC application. PostgreSQL owns money, claims, idempotency and outbox; Redis rate limits; Kafka carries balance snapshots.
 - Provisioning, credit/debit, balance/history, transfers, full credit/debit refunds, daily/trusted/promotion rewards, outbox/projection and reconciliation are implemented.
 - V4 implements indexed predecessor/final-tail checks, trusted integrity-function name resolution, populated-data preflight and a separate bounded operational audit. Fresh real-PostgreSQL regression, upgrade, deadline and long-history evidence is recorded.
-- Remaining production work includes transfer receipt privacy, authorization/error coverage, messaging durability/recovery and operational deployment. See the evidence note before claiming readiness.
+- Remaining production work includes transfer receipt privacy, authorization/error coverage, messaging durability/recovery and a controlled V4 deployment. The corrected second review does not establish readiness. Generic commit checks do not enforce all operation semantics; inverse refunds are checked by the audit. See the evidence note.
 
 ## Read only what the task needs
 

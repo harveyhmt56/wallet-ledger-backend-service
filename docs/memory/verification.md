@@ -1,8 +1,15 @@
 # Verification and pending work
 
-Checked: 2026-09-09 against baseline `79032c9` plus V4 remediation; [baseline and retrieval rules](../../MEMORY.md).
+Checked: 2026-09-10 at `2fe9ce4` (V4 implementation `9ef2639`); [baseline and retrieval rules](../../MEMORY.md).
 
-## V4 remediation — fresh evidence
+## Current review refresh — documentation only
+
+- At `2fe9ce4`, the only change since `9ef2639` is Claude's second review. Source/tests, Git diffs, retained benchmark JSON and existing generated XML were inspected; no application test, benchmark, HTTP/SQL probe, hosted CI lookup or deployment was run in this refresh.
+- Existing reports corroborate 15 unit/adapter + 90 integration cases (including 12 SQL mutation cases), zero failures/errors/skips and 19 KILLED PIT results. Generated artifacts are mutable; inspection is not a fresh gate or proof of exact commit provenance. Historical BUILD/LIVE/BENCH/DB claims stay attributed.
+- [Second-pass fact check](../review-remediation-plan.md#second-pass-fact-check--2026-09-10) corrects the readiness verdict, incomplete HTTP coverage wording, blanket integrity-to-409 proposal, two-retry count, player-before-promotion-lock ordering, inherited TEMP privileges and audit-versus-commit semantics. The 35 emitted codes / 11 named assertions / 24 absent codes were confirmed statically.
+- A controlled V4 deployment remains a release gate: startup Flyway uses its own datasource; serving Hikari timeouts do not apply. Follow the [upgrade runbook](../ledger-integrity-v4.md#populated-upgrades-and-operational-audit). Operation-semantic enforcement and supplemental plan checks are candidate future hardening, not implemented fixes.
+
+## V4 remediation — evidence recorded 2026-09-09
 
 - Step 1 is implemented in [V4](../../src/main/resources/db/migration/V4__indexed_ledger_integrity.sql); applied V1–V3 are unchanged. Per-entry predecessor and final-wallet/tail checks replace quadratic history scans; all integrity functions use qualified permanent objects and trusted invoker search paths.
 - Observed real-PostgreSQL red before production edits: four TEMP-shadow bypasses committed, corrupt V3 fixtures upgraded silently, and a 20k-history credit took 25.692 seconds against a 10-second CI bound. Fresh V4 regressions cover preserved invariants, populated/fresh upgrades, rejected corruption, preflight waiting for writers, audit shadowing, actual `psql` success/failure exits and 16 concurrent long-history credit/debit/transfer/refund requests.
@@ -53,11 +60,11 @@ Tests use disposable PostgreSQL, not H2 or the Compose database. [Shared test co
 
 ## Pending remediation
 
-Step 1 is implemented and verified above; later items remain pending. The [fact-checked plan](../review-remediation-plan.md) owns original findings and acceptance criteria; [V4 evidence](../ledger-integrity-v4.md) supersedes its step-1 implementation status. Consult these before the earlier [independent review](../review-by-harvey-with-claude.md), whose readiness verdict and some assumptions the plan corrects.
+Step 1 is implemented and verified above; later items remain pending. The [fact-checked plan](../review-remediation-plan.md) owns original findings and acceptance criteria; [V4 evidence](../ledger-integrity-v4.md) supersedes its step-1 implementation status. The [independent review](../review-by-harvey-with-claude.md) now includes the 2026-09-10 fact-check corrections; the plan owns remaining acceptance criteria.
 
 | Planned order | Remaining work and evidence limits |
 | --- | --- |
-| 1. Database validation | **Implemented/verified locally:** V4, preserved invariants, full/preflight audit, TEMP hardening, deadline tests and long-history benchmarks. Environment-specific upgrade, audit scheduling/alerts and production latency targets remain operational adoption work. |
+| 1. Database validation | **Implemented/verified locally:** V4, preserved invariants, full/preflight audit, TEMP hardening, deadline tests and long-history benchmarks. Controlled migration before rollout, audit scheduling/alerts and production latency targets remain operational adoption work. Generic triggers do not enforce all operation semantics; inverse refunds are audit-checked, not commit-enforced. |
 | 2. Receipt privacy and authorization | Project caller-safe fresh **and stored** transfer receipts; add real controller authorization and configured JWT-decoder tests. Current `recipientBalanceAfter` leak is a static data-flow finding. |
 | 3. Errors and audit fields | Separate known 409 conflicts, transient 503 failures and unexpected internal failures; preserve headers and useful field errors; add transfer/refund history relationships, rejection cases and accurate rate-limit retry guidance. |
 | 4. Messaging | Verify production replication/minimum ISR; wire topic configuration; validate exact event types/ranges; durable poison quarantine/replay; listener/offset recovery and relay lease tests. Current single-copy acknowledgements are a durability risk, not a reproduced broker-loss test. |
