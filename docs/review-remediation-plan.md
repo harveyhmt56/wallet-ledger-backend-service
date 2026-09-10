@@ -1,6 +1,6 @@
 # Wallet ledger review: fact check and proposed changes
 
-Initial review: 2026-09-09; current fact check: 2026-09-10 at `2fe9ce4`
+Initial review: 2026-09-09; second-pass fact check: 2026-09-10 at `2fe9ce4`. Later step 2 remediation against `45b28ab` is recorded in [API security evidence](api-security-step2.md); the second-pass section below retains its historical scope.
 
 Original reviewed commit: `4a1a954a844e951e74531303e855574551d6e14f`
 
@@ -35,7 +35,7 @@ Retain steps 2–6, with CI configuration already added at `79032c9`. Execute th
 
 ## Decision and scope
 
-**Changes are necessary before a production release.** Core features are implemented and prior automated checks passed, but that does not establish production readiness. The original wallet-history and TEMP-shadow blockers were resolved by V4; API privacy, messaging and the other release gates above remain open.
+**Changes are necessary before a production release.** Core features are implemented and prior automated checks passed, but that does not establish production readiness. The original wallet-history and TEMP-shadow blockers were resolved by V4. Step 2 closes transfer disclosure and adds authorization/JWT evidence; errors, messaging and production adoption remain open.
 
 Retain the architecture: one Spring Boot service, PostgreSQL transactions and ordered wallet locks, immutable double-entry journals, persistent idempotency, trusted reward evidence, Redis rate limiting and a Kafka outbox. A rewrite or microservice split is unnecessary.
 
@@ -172,7 +172,7 @@ Add tests of application authorization and its configuration, rather than attemp
 
 ## Ordered implementation plan
 
-Status checked 2026-09-10 at `2fe9ce4`: step 1 is implemented at `9ef2639`; see [regression, upgrade, timeout and benchmark evidence](ledger-integrity-v4.md). Steps 2–5 and production adoption remain pending; step 6 already has CI configuration, but hosted execution and other deployment evidence remain unverified.
+Status updated 2026-09-10 against baseline `45b28ab` plus step 2: step 1 is implemented at `9ef2639`; see [regression, upgrade, timeout and benchmark evidence](ledger-integrity-v4.md). Step 2 is implemented with [local privacy/authorization evidence](api-security-step2.md). Steps 3–5 and production adoption remain pending; step 6 already has CI configuration, but hosted execution and other deployment evidence remain unverified.
 
 ### Step 1: preserve behaviour and repair database safeguards
 
@@ -196,11 +196,13 @@ Acceptance evidence:
 
 ### Step 2: close transfer disclosure and prove API authorization
 
+**Implemented and verified locally, 2026-09-10.** See [behavior, regressions and evidence limits](api-security-step2.md). The criteria below remain the scope of the remediation.
+
 Affected areas: transfer response DTO/projection, wallet controller response mapping, HTTP/JWT integration tests and production auth configuration validation.
 
 - Filter recipient balance from fresh transfers and old stored replays; preserve journal/receipt identities and the sender's own financial result.
 - Add real-controller endpoint × role tests: anonymous, roleless, owning/other PLAYER, SERVICE and ADMIN. Cover transfers, refunds, every claim, completion recording, reads and reconciliation.
-- Assert denied calls produce no journal, wallet, claim or idempotency writes. Verify sender identity comes from authentication and client input cannot select a reward amount or forge trusted completion.
+- Assert authentication/route authorization denials produce no journal, wallet, claim or idempotency writes. Preserve the established stored rejection for business failures such as `COMPLETION_NOT_OWNED`, with no money/entitlement changes. Verify sender identity comes from authentication and client input cannot select a reward amount or forge trusted completion.
 - Verify legitimate JWTs and rejection of wrong issuer/audience, expired tokens and invalid signatures using isolated local fixtures; do not contact a live identity provider.
 
 Acceptance: a sender sees no recipient balance on initial response, ordinary replay or replay of a pre-change stored receipt; ownership checks remain enforced; every privileged route has explicit positive and negative HTTP evidence.

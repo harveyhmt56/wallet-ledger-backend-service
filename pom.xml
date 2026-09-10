@@ -71,7 +71,11 @@
         <groupId>org.pitest</groupId><artifactId>pitest-maven</artifactId><version>${pitest.version}</version>
         <dependencies><dependency><groupId>org.pitest</groupId><artifactId>pitest-junit5-plugin</artifactId><version>${pitest-junit5.version}</version></dependency></dependencies>
         <configuration>
-          <targetClasses><param>com.example.walletledger.*.domain.*</param></targetClasses>
+          <targetClasses>
+            <param>com.example.walletledger.*.domain.*</param>
+            <param>com.example.walletledger.wallet.api.TransferReceipt</param>
+            <param>com.example.walletledger.configuration.RequiredJwtConfiguration</param>
+          </targetClasses>
           <targetTests><param>com.example.walletledger.*Test</param></targetTests>
           <threads>4</threads>
           <mutationThreshold>80</mutationThreshold><coverageThreshold>80</coverageThreshold>

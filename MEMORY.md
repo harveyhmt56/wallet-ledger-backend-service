@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Last checked: 2026-09-10 at `2fe9ce4` (V4 implementation `9ef2639`); documentation/source fact check only. See [evidence and limits](docs/memory/verification.md).
+Last checked: 2026-09-10 against baseline `45b28ab` plus step 2 privacy/authorization; fresh full local verification. See [evidence and limits](docs/memory/verification.md).
 This is a retrieval index and source-backed snapshot, not an instruction to execute a backlog.
 
 ## Requirement:
@@ -16,7 +16,8 @@ This is a retrieval index and source-backed snapshot, not an instruction to exec
 - Java 21 / Spring Boot 3.5.16; one Spring JDBC application. PostgreSQL owns money, claims, idempotency and outbox; Redis rate limits; Kafka carries balance snapshots.
 - Provisioning, credit/debit, balance/history, transfers, full credit/debit refunds, daily/trusted/promotion rewards, outbox/projection and reconciliation are implemented.
 - V4 implements indexed predecessor/final-tail checks, trusted integrity-function name resolution, populated-data preflight and a separate bounded operational audit. Fresh real-PostgreSQL regression, upgrade, deadline and long-history evidence is recorded.
-- Remaining production work includes transfer receipt privacy, authorization/error coverage, messaging durability/recovery and a controlled V4 deployment. The corrected second review does not establish readiness. Generic commit checks do not enforce all operation semantics; inverse refunds are checked by the audit. See the evidence note.
+- Step 2 filters recipient funds from fresh/stored transfer HTTP receipts and verifies controller authorization plus configured JWT decoding; [evidence](docs/api-security-step2.md).
+- Remaining production work includes error/history coverage, messaging durability/recovery and a controlled V4 deployment. The corrected second review does not establish readiness. Generic commit checks do not enforce all operation semantics; inverse refunds are checked by the audit. See the evidence note.
 
 ## Read only what the task needs
 
