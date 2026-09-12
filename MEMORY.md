@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Last checked: 2026-09-10 against baseline `45b28ab` plus step 2 privacy/authorization; fresh full local verification. See [evidence and limits](docs/memory/verification.md).
+Last checked: 2026-09-11 QA audit at `760f4b0` (coverage, widened mutation, black-box resilience), on top of the 2026-09-10 step 2 verification. See [evidence and limits](docs/memory/verification.md).
 This is a retrieval index and source-backed snapshot, not an instruction to execute a backlog.
 
 ## Requirement:
@@ -17,6 +17,7 @@ This is a retrieval index and source-backed snapshot, not an instruction to exec
 - Provisioning, credit/debit, balance/history, transfers, full credit/debit refunds, daily/trusted/promotion rewards, outbox/projection and reconciliation are implemented.
 - V4 implements indexed predecessor/final-tail checks, trusted integrity-function name resolution, populated-data preflight and a separate bounded operational audit. Fresh real-PostgreSQL regression, upgrade, deadline and long-history evidence is recorded.
 - Step 2 filters recipient funds from fresh/stored transfer HTTP receipts and verifies controller authorization plus configured JWT decoding; [evidence](docs/api-security-step2.md).
+- 2026-09-11 QA audit at `760f4b0`: JaCoCo 90.7% line / 68.3% branch; PIT widened to the whole service is 76% (configured gate covers 47 of 900 lines); 176/179 black-box checks passed. Open findings: database-down returns a framework 500 not 503 (F-01), one bad Kafka record stalls every projection (F-02), oversized event integers narrow silently (F-03); debit reversal and missing-player paths are untested in automation and the refund race cannot detect loss of its lock. See [QA audit](docs/qa-audit-2026-09-11.md).
 - Remaining production work includes error/history coverage, messaging durability/recovery and a controlled V4 deployment. The corrected second review does not establish readiness. Generic commit checks do not enforce all operation semantics; inverse refunds are checked by the audit. See the evidence note.
 
 ## Read only what the task needs
@@ -29,6 +30,7 @@ This is a retrieval index and source-backed snapshot, not an instruction to exec
 | Setup, credentials, endpoint bodies, demo, environment variables | [README](README.md) |
 | Detailed findings and ordered acceptance criteria | [Fact-checked remediation plan](docs/review-remediation-plan.md) |
 | V4 upgrade, audit invocation/alerts, regression and long-history evidence | [Ledger integrity V4](docs/ledger-integrity-v4.md) |
+| Coverage per class, honest mutation score, survivors, chaos results, ranked findings F-01–F-11, requirement map | [QA audit 2026-09-11](docs/qa-audit-2026-09-11.md) |
 | Original planning rationale, alternatives and reference list | [Archived plan](docs/memory/archive/2026-09-07-plan.md) — historical; load only when needed |
 
 ## Retrieval and maintenance

@@ -1,6 +1,14 @@
 # Verification and pending work
 
-Checked: 2026-09-10 against baseline `45b28ab` plus step 2 privacy/authorization; [baseline and retrieval rules](../../MEMORY.md).
+Checked: 2026-09-11 QA audit at `760f4b0`, on top of the 2026-09-10 step 2 verification against `45b28ab`; [baseline and retrieval rules](../../MEMORY.md).
+
+## QA audit — coverage, mutation and resilience, 2026-09-11
+
+- [Canonical results, findings and requirement map](../qa-audit-2026-09-11.md). No repository file was changed by the audit; coverage was attached on the command line, widened PIT ran in an exported copy, and probes ran on a separate Compose project that was removed afterwards. The probe harness is not in the repository.
+- Gate at `760f4b0`: 27 unit + 186 integration cases green in 55 s, PIT 26/26. JaCoCo, measured for the first time: **90.7% line, 68.3% branch**. PIT widened to every class with `*IT` killers: **233/307 killed (76%)**, 32 survived, 42 uncovered, 196 s.
+- Black-box on the isolated stack: **176/179 passed**. Money paths, races over HTTP, refunds including debit reversal, pagination, rewards, rate limiting, SIGKILL recovery (each key exactly one posting) and outbox-to-projection convergence all verified.
+- Product findings: F-01 database unavailable returns a framework 500 (`CannotCreateTransactionException` is not a `DataAccessException`); F-02 one malformed Kafka record stalls projection for all wallets; F-03 oversized event integers narrow via `longValue()` and poison a projection. Test-quality findings: the refund race passes with its advisory lock deleted, debit reversal and missing-player paths never execute in automation, several guards survive because races assert status counts not codes.
+- These sit inside plan steps 3 and 4 below; they do not change the V4 or step 2 conclusions.
 
 ## Step 2 privacy and authorization — fresh evidence, 2026-09-10
 
