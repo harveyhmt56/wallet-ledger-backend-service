@@ -1,0 +1,283 @@
+{
+  "baseline": {
+    "commit": "f2a7e0748fef35667fd838814f79bb2a897f50ee",
+    "snapshot": "git archive HEAD, committed baseline only",
+    "java": "/Users/harvey/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.8/Contents/Home",
+    "scope": [
+      "ConfiguredJwtHttpIT",
+      "BalanceListenerIT"
+    ]
+  },
+  "runs": [
+    {
+      "name": "00_control_before",
+      "target_tests": "ConfiguredJwtHttpIT,BalanceListenerIT",
+      "mutation": false,
+      "exit_code": 0,
+      "seconds": 15.815,
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": [],
+      "reports": "/private/tmp/wallet-qa-2026-09-14/adapter-mutations/reports/00_control_before"
+    },
+    {
+      "name": "01_remove_roles_claim",
+      "target_tests": "ConfiguredJwtHttpIT",
+      "mutation": true,
+      "exit_code": 1,
+      "seconds": 9.299,
+      "tests": 12,
+      "failures": 8,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": [
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "validSignatureIssuerAudienceSubjectAndRolesReachTheRealWalletController",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[1]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[2]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[3]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[4]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[5]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[6]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[7]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        }
+      ],
+      "reports": "/private/tmp/wallet-qa-2026-09-14/adapter-mutations/reports/01_remove_roles_claim"
+    },
+    {
+      "name": "02_remove_role_prefix",
+      "target_tests": "ConfiguredJwtHttpIT",
+      "mutation": true,
+      "exit_code": 1,
+      "seconds": 10.189,
+      "tests": 12,
+      "failures": 8,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": [
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "validSignatureIssuerAudienceSubjectAndRolesReachTheRealWalletController",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[1]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[2]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[3]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[4]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[5]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[6]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[7]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        }
+      ],
+      "reports": "/private/tmp/wallet-qa-2026-09-14/adapter-mutations/reports/02_remove_role_prefix"
+    },
+    {
+      "name": "03_remove_converter",
+      "target_tests": "ConfiguredJwtHttpIT",
+      "mutation": true,
+      "exit_code": 1,
+      "seconds": 12.73,
+      "tests": 12,
+      "failures": 8,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": [
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "validSignatureIssuerAudienceSubjectAndRolesReachTheRealWalletController",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[1]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[2]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[3]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[4]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[5]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[6]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[7]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 403"
+        }
+      ],
+      "reports": "/private/tmp/wallet-qa-2026-09-14/adapter-mutations/reports/03_remove_converter"
+    },
+    {
+      "name": "04_null_listener",
+      "target_tests": "BalanceListenerIT",
+      "mutation": true,
+      "exit_code": 1,
+      "seconds": 15.276,
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": [
+        {
+          "class": "com.example.walletledger.messaging.kafka.BalanceListenerIT",
+          "test": "listenerPersistsFirstDeliveryAndCommitsOffsetsForDuplicatesAndOlderSnapshots",
+          "kind": "failure",
+          "type": "java.lang.AssertionError",
+          "message": "\nExpected size: 1 but was: 0 in:\n[]"
+        }
+      ],
+      "reports": "/private/tmp/wallet-qa-2026-09-14/adapter-mutations/reports/04_null_listener"
+    },
+    {
+      "name": "05_control_restored",
+      "target_tests": "ConfiguredJwtHttpIT,BalanceListenerIT",
+      "mutation": false,
+      "exit_code": 0,
+      "seconds": 18.54,
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": [],
+      "reports": "/private/tmp/wallet-qa-2026-09-14/adapter-mutations/reports/05_control_restored"
+    }
+  ],
+  "sources_restored": true,
+  "restoration_checks": {
+    "src/main/java/com/example/walletledger/configuration/SecurityConfiguration.java": {
+      "matches_committed_baseline": true,
+      "sha256": "c1f865b4b6aa183719a513e10a4b96986cd1ea18a5a48d9fcf7e4fbef8d3466e"
+    },
+    "src/main/java/com/example/walletledger/messaging/kafka/MessagingConfiguration.java": {
+      "matches_committed_baseline": true,
+      "sha256": "03116ab19d597b8fd0b950301459208139a09f3ca910145399ee2f3a393c30b6"
+    }
+  },
+  "manual_assertion_kills": 4,
+  "assessment": "All four exact manual mutations killed by assertions with clean before/after controls. This does not change the broad PIT score and is not evidence of a production defect."
+}

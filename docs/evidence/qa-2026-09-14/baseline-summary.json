@@ -1,0 +1,45 @@
+{
+  "surefire": {
+    "tests": 97,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": 14
+  },
+  "failsafe": {
+    "tests": 264,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": 23
+  },
+  "jacoco": {
+    "INSTRUCTION": {
+      "missed": 104,
+      "covered": 4049
+    },
+    "BRANCH": {
+      "missed": 0,
+      "covered": 164
+    },
+    "LINE": {
+      "missed": 25,
+      "covered": 875
+    },
+    "COMPLEXITY": {
+      "missed": 9,
+      "covered": 263
+    },
+    "METHOD": {
+      "missed": 9,
+      "covered": 181
+    },
+    "CLASS": {
+      "missed": 0,
+      "covered": 41
+    }
+  },
+  "pit": {
+    "KILLED": 52
+  }
+}
