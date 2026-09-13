@@ -1,6 +1,6 @@
 # Verification: commands, test navigation and evidence rules
 
-Checked 2026-09-13 against `e6472f7`; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
+Checked 2026-09-14 against `f2a7e07` plus four QA integration cases; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
 
 ## Commands
 
@@ -25,6 +25,7 @@ CI ([verify.yml](../../.github/workflows/verify.yml)) runs `clean verify -Pmutat
 | Behavior | Focused source to inspect |
 | --- | --- |
 | 100 debits of 10 from 500 → 50 successes, 50 rejections, zero; 100 same-key copies; credit/transfer/refund races with exact loser codes; history | [WalletLedgerIT](../../src/test/java/com/example/walletledger/wallet/WalletLedgerIT.java) |
+| Two-instance 100-debit/duplicate races, mixed-operation independent oracle, full history/event evidence; forced committed-balance freshness | [MoneyPressureHttpIT](../../src/test/java/com/example/walletledger/wallet/MoneyPressureHttpIT.java), `DatabaseSafeguardsIT.competingDebitRejectsAfterWaitingForAnEarlierDebitToCommit`; [fresh audit/evidence](../qa-audit-2026-09-14.md) |
 | Forced overlapping refunds of credit and debit originals → one reversal, loser `ALREADY_REFUNDED`; forced duplicate provision → `PLAYER_EXISTS` | [RefundConcurrencyIT](../../src/test/java/com/example/walletledger/wallet/RefundConcurrencyIT.java), [ProvisionConcurrencyIT](../../src/test/java/com/example/walletledger/wallet/ProvisionConcurrencyIT.java) |
 | Missing/suspended player, duplicate transfer/refund reference, unsupported refund, identifier/metadata limits, pagination bounds | [WalletRejectionsIT](../../src/test/java/com/example/walletledger/wallet/WalletRejectionsIT.java) |
 | Immutable/incomplete journals, outbox failure rollback, held wallet lock | [DatabaseSafeguardsIT](../../src/test/java/com/example/walletledger/wallet/DatabaseSafeguardsIT.java) |

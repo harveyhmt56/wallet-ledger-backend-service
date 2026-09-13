@@ -1,0 +1,49 @@
+{
+  "command": "env JAVA_HOME=/Users/harvey/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.8/Contents/Home PATH=/Users/harvey/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.8/Contents/Home/bin:$PATH ./mvnw -B -ntp test-compile failsafe:integration-test failsafe:verify -Dit.test=F01DatabaseOutageCharacterizationIT",
+  "workingDirectory": "/private/tmp/wallet-qa-2026-09-14/failure-probes",
+  "log": "/private/tmp/wallet-qa-2026-09-14/f01-recovery.log",
+  "tests": 1,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "suiteSeconds": 18.863,
+  "mavenSeconds": 23.929,
+  "exitCode": 0,
+  "outage": {
+    "httpStatus": 500,
+    "elapsedMillis": 5824,
+    "stableCodePresent": false,
+    "exception": "CannotCreateTransactionException",
+    "interpretation": "Reproduced known F01 error-contract defect; passing characterization is not desired production behavior."
+  },
+  "recovery": {
+    "portBindingsBefore": [
+      "127.0.0.1:54837"
+    ],
+    "portBindingsAfter": [
+      "127.0.0.1:54837"
+    ],
+    "failedDebitReservationCount": 0,
+    "balanceBeforeRetry": 100,
+    "originalCreditReceiptReplayed": true,
+    "sameDebitKeySucceededThenReplayed": true,
+    "balanceAfterRetry": 70,
+    "sequenceAfterRetry": 2,
+    "playerLedgerEntries": 2,
+    "outboxEvents": 2,
+    "ledgerSum": 70,
+    "integrityAuditFindings": 0
+  },
+  "originalHarnessError": {
+    "retainedAt": "/private/tmp/wallet-qa-2026-09-14/f01-original-harness-error",
+    "observation": "Original F01 recovery timed out after 30 seconds with connection refused to cached localhost:33324.",
+    "causeStatus": "Suspected Docker dynamic host-port remapping, not conclusively established because the original post-restart mapping was not captured. An owned fixed-loopback-port fixture removed the endpoint instability and completed recovery."
+  },
+  "cleanup": {
+    "postgresContainerId": "13f9c3ff97726ef30fa63c48445194311030780c767cedb4f4cf9c08fee6fe71",
+    "ryukContainerId": "34ef21a3997b05dcc473b53d5a3f84452bcaa09b76b78d636d3725704ba45b71",
+    "bothAbsentFromDockerPsAfterRun": true,
+    "otherContainersChangedByThisProbe": false
+  },
+  "mainRepositoryFilesChangedByThisFollowup": []
+}

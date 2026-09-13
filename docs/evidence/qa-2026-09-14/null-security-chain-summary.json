@@ -1,0 +1,118 @@
+{
+  "mutation": "SecurityConfiguration.jwt NULL_RETURNS: fully evaluate/build original chain, then return null",
+  "runs": [
+    {
+      "name": "06_null_security_chain",
+      "exit_code": 1,
+      "seconds": 15.46,
+      "tests": 12,
+      "failures": 4,
+      "errors": 8,
+      "skipped": 0,
+      "failed_cases": [
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "validSignatureIssuerAudienceSubjectAndRolesReachTheRealWalletController",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 200\n but was: 401"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "nonlocalProfileRejectsLocalDemonstrationBasicCredentials",
+          "kind": "error",
+          "type": "java.lang.NullPointerException",
+          "message": "Cannot invoke \"com.fasterxml.jackson.databind.JsonNode.path(String)\" because the return value of \"org.springframework.http.ResponseEntity.getBody()\" is null"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[1]",
+          "kind": "error",
+          "type": "java.lang.NullPointerException",
+          "message": "Cannot invoke \"org.springframework.http.MediaType.isCompatibleWith(org.springframework.http.MediaType)\" because the return value of \"org.springframework.http.HttpHeaders.getContentType()\" is null"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[2]",
+          "kind": "error",
+          "type": "java.lang.NullPointerException",
+          "message": "Cannot invoke \"org.springframework.http.MediaType.isCompatibleWith(org.springframework.http.MediaType)\" because the return value of \"org.springframework.http.HttpHeaders.getContentType()\" is null"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[3]",
+          "kind": "error",
+          "type": "java.lang.NullPointerException",
+          "message": "Cannot invoke \"org.springframework.http.MediaType.isCompatibleWith(org.springframework.http.MediaType)\" because the return value of \"org.springframework.http.HttpHeaders.getContentType()\" is null"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[4]",
+          "kind": "error",
+          "type": "java.lang.NullPointerException",
+          "message": "Cannot invoke \"org.springframework.http.MediaType.isCompatibleWith(org.springframework.http.MediaType)\" because the return value of \"org.springframework.http.HttpHeaders.getContentType()\" is null"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[5]",
+          "kind": "error",
+          "type": "java.lang.NullPointerException",
+          "message": "Cannot invoke \"org.springframework.http.MediaType.isCompatibleWith(org.springframework.http.MediaType)\" because the return value of \"org.springframework.http.HttpHeaders.getContentType()\" is null"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[6]",
+          "kind": "error",
+          "type": "java.lang.NullPointerException",
+          "message": "Cannot invoke \"org.springframework.http.MediaType.isCompatibleWith(org.springframework.http.MediaType)\" because the return value of \"org.springframework.http.HttpHeaders.getContentType()\" is null"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "invalidTokenCannotReachMoneyControllersOrReserveAnIdempotencyKey(InvalidToken)[7]",
+          "kind": "error",
+          "type": "java.lang.NullPointerException",
+          "message": "Cannot invoke \"org.springframework.http.MediaType.isCompatibleWith(org.springframework.http.MediaType)\" because the return value of \"org.springframework.http.HttpHeaders.getContentType()\" is null"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "validSignedTokenWithoutPlayerRoleCannotTransfer(String)[1]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 403\n but was: 401"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "validSignedTokenWithoutPlayerRoleCannotTransfer(String)[2]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 403\n but was: 401"
+        },
+        {
+          "class": "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+          "test": "validSignedTokenWithoutPlayerRoleCannotTransfer(String)[3]",
+          "kind": "failure",
+          "type": "org.opentest4j.AssertionFailedError",
+          "message": "\nexpected: 403\n but was: 401"
+        }
+      ],
+      "reports": "/private/tmp/wallet-qa-2026-09-14/adapter-mutations/reports/06_null_security_chain"
+    },
+    {
+      "name": "07_null_security_chain_restored",
+      "exit_code": 0,
+      "seconds": 13.967,
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": [],
+      "reports": "/private/tmp/wallet-qa-2026-09-14/adapter-mutations/reports/07_null_security_chain_restored"
+    }
+  ],
+  "source_restored": true,
+  "baseline_commit": "f2a7e0748fef35667fd838814f79bb2a897f50ee",
+  "context_started_in_mutation": true,
+  "restored_matches_committed_baseline": true,
+  "restored_sha256": "c1f865b4b6aa183719a513e10a4b96986cd1ea18a5a48d9fcf7e4fbef8d3466e",
+  "assessment": "Detected by 4 explicit HTTP status assertions. The 8 additional errors are NullPointerExceptions in test bodies reading absent body/content type from 401 responses, not application-context startup failures. Restored control passes all 12. Broad PIT score is unchanged."
+}

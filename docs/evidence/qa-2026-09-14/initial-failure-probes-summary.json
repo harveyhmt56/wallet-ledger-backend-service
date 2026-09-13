@@ -1,0 +1,26 @@
+[
+  {
+    "name": "com.example.walletledger.qa.F02PoisonEventCharacterizationIT",
+    "tests": "1",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "8.793"
+  },
+  {
+    "name": "com.example.walletledger.qa.F01DatabaseOutageCharacterizationIT",
+    "tests": "1",
+    "failures": "0",
+    "errors": "1",
+    "skipped": "0",
+    "time": "35.969"
+  },
+  {
+    "name": "com.example.walletledger.qa.F03ProjectionOverflowCharacterizationIT",
+    "tests": "2",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "4.132"
+  }
+]

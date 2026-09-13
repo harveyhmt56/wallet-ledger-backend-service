@@ -20,6 +20,7 @@ Dated, superseded facts. Each row links to its canonical document; nothing here 
 | 2026-09-13 | `1d19764` | Both reviews fact-checked at the audit baseline: fresh scratch gate 27 + 186, PIT 26/26, 46.4 s; eight advice/driver checks and Jackson overflow probes confirmed F-01/F-03 mechanics; stale authorization/privacy status and overstated debit-reversal/404 coverage claims corrected; application unchanged | [summary](../evidence/review-fact-check-2026-09-13/summary.json) |
 | 2026-09-13 | `e6472f7` | **Test-gap closure F-04–F-08** and unit expansion, tests and `pom.xml` only. 148 cases added → 97 unit + 264 IT; normal PIT gate 26/26 → 52/52 with three adapter classes added; combined JaCoCo 90.7/68.3 → 97.2/100; broader PIT 76.0 → 94.5%; 15 manual contract mutations + 3 JWT role deletions detected; restored controls pass. Reward rejection snapshot helper: 295 ms / 11 MB → 5.8 ms / 561 B at 20k postings | [test-gap evidence](../test-gap-evidence-2026-09-13.md), [counts](../evidence/test-gaps-2026-09-13/summary.json) |
 | 2026-09-13 | `orchestrate/memory-mgt-v2` | Memory compacted into requirements / state / implementation / verification / history on top of `e6472f7`. The earlier `orchestrate/memory-mgt-v1` restructure (from `760f4b0`) was never merged and is superseded | — |
+| 2026-09-14 | `f2a7e07` + QA working tree | Full money QA; four regression cases added. Final 97+268 cases, PIT 52/52, 12 SQL mutants, JaCoCo 875/900 lines and 164/164 branches; broad PIT 290/307. Four money/five adapter manual mutations detected with restored controls. F-01/F-02/F-03 reproduced, outage recovery safe. No application changes; one restart harness error corrected; disposable containers removed | [audit](../qa-audit-2026-09-14.md), [counts](../evidence/qa-2026-09-14/final-gate-summary.json) |
 
 ## Closed findings
 
@@ -30,7 +31,7 @@ Dated, superseded facts. Each row links to its canonical document; nothing here 
 
 ## Superseded evidence (do not re-run)
 
-- Pre-V4 gates: 15 unit/adapter + 32 IT, PIT 19/19 (`f4e6b1a`, `682a1fd`, `79032c9`); V4 gate 15 + 90, 19/19, 12/12 SQL mutants (`9ef2639`, `2fe9ce4`); step 2 gate 27 + 186, 26/26 (`760f4b0`, `1d19764`). All superseded by the `e6472f7` gate in [state](state.md#latest-evidence-fresh-2026-09-13-at-e6472f7).
+- Pre-V4 gates: 15 unit/adapter + 32 IT, PIT 19/19 (`f4e6b1a`, `682a1fd`, `79032c9`); V4 gate 15 + 90, 19/19, 12/12 SQL mutants (`9ef2639`, `2fe9ce4`); step 2 gate 27 + 186, 26/26 (`760f4b0`, `1d19764`). All superseded by the `e6472f7` gate in [state](state.md).
 - Historical local load figures exclude HTTP, Redis and Kafka relay, use short histories and set no capacity target: [build evidence](../build-evidence.md#local-load-measurement).
 - Full logs under `/private/tmp` (`step2-full-verify.log`, `ledger-v4-final-verify.log`, `wallet-test-gaps-*`) and generated `target/` reports are ephemeral; committed reports preserve observations, not the raw artifacts.
 

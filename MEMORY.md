@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Baseline: `main` = `e6472f7` (2026-09-13, test-gap closure; application code unchanged since `760f4b0`). Last checked 2026-09-13. This is a retrieval index and source-backed snapshot, not a backlog to execute.
+Baseline: `f2a7e07` plus QA tests on `codex/QA-full-project-verify` (application unchanged since `760f4b0`). Last checked 2026-09-14. This is a retrieval index and source-backed snapshot, not a backlog to execute.
 
 ## Project goal and must-fulfil requirements
 
@@ -15,11 +15,11 @@ Must fulfil (graded on money-moving correctness, service design, concurrency and
 
 Required stack: Java 21, Spring Boot 3.5.16, PostgreSQL, Redis, Kafka, Flyway, Docker Compose. Full list, confirmed decisions and invariants: [requirements](docs/memory/requirements.md).
 
-## Current state (2026-09-13)
+## Current state (2026-09-14)
 
 - Implemented and verified locally: every mandatory and supporting feature. V4 (`9ef2639`) closed the quadratic commit check and TEMP-shadow bypass; step 2 (`760f4b0`) closed the recipient-balance disclosure and added the HTTP authorization matrix and signed-JWT tests; `e6472f7` closed test-quality findings F-04–F-08 (tests and `pom.xml` only).
-- Fresh gate at `e6472f7`: 97 unit + 264 integration cases, zero failures; PIT 52/52; combined JaCoCo 97.2% line / 100% branch; broader PIT 290/307 (94.5%).
-- Open: F-01 database down → framework 500; F-02 one bad Kafka record stalls its consumer's partitions; F-03 oversized event integers narrow silently; F-09/F-10/F-11 and review items N1/N3/F4–F7 low. Remediation steps 3–6 pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
+- Fresh full QA: 97 unit + 268 integration cases, zero failures/errors/skips; PIT 52/52; SQL mutations 12/12; JaCoCo 97.2% line / 100% branch; broader PIT 290/307 (94.5%). Four new pressure cases and nine manual mutations verified. [Audit](docs/qa-audit-2026-09-14.md).
+- Freshly reproduced, open: F-01 database down → framework 500 (money-safe recovery); F-02 poison Kafka record stalls later records; F-03 oversized event integers corrupt the projection; F-09/F-10/F-11 and review items N1/N3/F4–F7 low. Remediation steps 3–6 pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
 
 ## Sub-memories: read only what the task needs; do not preload notes
 
