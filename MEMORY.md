@@ -1,46 +1,47 @@
 # Wallet ledger project memory
 
-Last checked: 2026-09-13 test-gap work from `e66f363`. Fresh full gate: 97 unit + 264 integration cases; PIT 52/52. See [evidence and limits](docs/memory/verification.md).
-This is a retrieval index and source-backed snapshot, not an instruction to execute a backlog.
+Baseline: `main` = `e6472f7` (2026-09-13, test-gap closure; application code unchanged since `760f4b0`). Last checked 2026-09-13. This is a retrieval index and source-backed snapshot, not a backlog to execute.
 
-## Requirement:
-- Wallet-ledger-backend-service for Production grade.
-- Required wallet functions: credit/debit, insufficient-funds rejection, current balance, paginated history, permanent reason/reference records, idempotency, concurrency safety, atomic failures and clear input errors. Supporting scope includes the implemented rewards, transfers, refunds and events.
-- Safety & Correctness: request idempotent, prevent concurrent problem, transaction atomic and input validation.
-- In one line: the wallet balance must always be right, no matter how many requests come in, in what order, or what breaks along the way.
-- Good Documentation: README with clear instruction for quick start and test this project, and design reasoning.
+## Project goal and must-fulfil requirements
 
-## Current state
+Goal: a production-grade wallet ledger for one whole-unit in-game currency where **the balance is always right, no matter how many requests arrive, in what order, or what breaks along the way**.
 
-- Base implementation is `f4e6b1a`; reviews followed, and `79032c9` added CI. `9ef2639` implements step 1 through V4 while preserving V1–V3; `2fe9ce4` revises the independent review.
-- Java 21 / Spring Boot 3.5.16; one Spring JDBC application. PostgreSQL owns money, claims, idempotency and outbox; Redis rate limits; Kafka carries balance snapshots.
-- Provisioning, credit/debit, balance/history, transfers, full credit/debit refunds, daily/trusted/promotion rewards, outbox/projection and reconciliation are implemented.
-- V4 implements indexed predecessor/final-tail checks, trusted integrity-function name resolution, populated-data preflight and a separate bounded operational audit. Fresh real-PostgreSQL regression, upgrade, deadline and long-history evidence is recorded.
-- Step 2 filters recipient funds from fresh/stored transfer HTTP receipts and verifies controller authorization plus configured JWT decoding; [evidence](docs/api-security-step2.md).
-- Historical 2026-09-11 [QA audit](docs/qa-audit-2026-09-11.md): combined JaCoCo 90.7% / 68.3%, expanded PIT 76% (signed-JWT IT excluded), black-box 176/179. Open product findings: database-down framework 500 (F-01), poison event can stall the affected consumer's partitions (F-02), oversized event integers narrow silently (F-03).
-- [Test-gap work](docs/test-gap-evidence-2026-09-13.md) covers service debit reversals, missing players, exact race codes, projection first delivery/zero balance and actual listener dispatch; manual mutants fail and restored controls pass. Unit-only coverage rises to 30.0% line / 40.2% branch; combined 97.2% / 100%. Broader PIT: 290/307 killed (94.5%), nine survived, eight uncovered, zero timeouts/errors; exclusions and remaining evidence limits are documented. Application code is unchanged.
-- Remaining production work includes outage error mapping, messaging durability/recovery and a controlled V4 deployment. The corrected second review does not establish readiness. Generic commit checks do not enforce all operation semantics; inverse refunds are checked by the audit. See the evidence note.
+Must fulfil (graded on money-moving correctness, service design, concurrency and edge cases, test quality, documentation):
+- Credit, debit, reject an insufficient-balance debit, current balance, paginated history; every balance change leaves a permanent record of what and why.
+- Idempotent requests; no incorrect state under concurrent requests; no partial updates on failure; clear handling of invalid input (negative amounts, missing player).
+- Tests that protect money paths under pressure: concurrent requests and repeated submissions.
+- README with run/setup/database/tests, design decisions and ledger approach, concurrency & idempotency, testing approach, assumptions & limitations.
+- Supporting scope, all implemented: daily login streak, player-to-player transfer, full refund/reversal, server-decided reward claim, first-N promotion, domain events on balance change.
 
-## Read only what the task needs
+Required stack: Java 21, Spring Boot 3.5.16, PostgreSQL, Redis, Kafka, Flyway, Docker Compose. Full list, confirmed decisions and invariants: [requirements](docs/memory/requirements.md).
 
-| Need / search terms | Open |
+## Current state (2026-09-13)
+
+- Implemented and verified locally: every mandatory and supporting feature. V4 (`9ef2639`) closed the quadratic commit check and TEMP-shadow bypass; step 2 (`760f4b0`) closed the recipient-balance disclosure and added the HTTP authorization matrix and signed-JWT tests; `e6472f7` closed test-quality findings F-04–F-08 (tests and `pom.xml` only).
+- Fresh gate at `e6472f7`: 97 unit + 264 integration cases, zero failures; PIT 52/52; combined JaCoCo 97.2% line / 100% branch; broader PIT 290/307 (94.5%).
+- Open: F-01 database down → framework 500; F-02 one bad Kafka record stalls its consumer's partitions; F-03 oversized event integers narrow silently; F-09/F-10/F-11 and review items N1/N3/F4–F7 low. Remediation steps 3–6 pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
+
+## Sub-memories: read only what the task needs; do not preload notes
+
+| Need | Note |
 | --- | --- |
-| Currency, refund scope, trusted evidence, invariants, assignment expectations | [Decisions](docs/memory/decisions.md) |
-| Posting, savepoints, locks, idempotency, rewards, API, security, SQL, Kafka, Redis | [Implementation map](docs/memory/implementation.md) |
-| Test commands, evidence limits, production gaps, next remediation step | [Verification and pending work](docs/memory/verification.md) |
-| Setup, credentials, endpoint bodies, demo, environment variables | [README](README.md) |
-| Detailed findings and ordered acceptance criteria | [Fact-checked remediation plan](docs/review-remediation-plan.md) |
-| V4 upgrade, audit invocation/alerts, regression and long-history evidence | [Ledger integrity V4](docs/ledger-integrity-v4.md) |
-| Coverage per class, honest mutation score, survivors, chaos results, ranked findings F-01–F-11, requirement map | [QA audit 2026-09-11](docs/qa-audit-2026-09-11.md) |
-| Original planning rationale, alternatives and reference list | [Archived plan](docs/memory/archive/2026-09-07-plan.md) — historical; load only when needed |
+| Goals, must-fulfil requirements, grading, confirmed decisions, invariants | [requirements](docs/memory/requirements.md) |
+| Current baseline, fresh evidence, open findings, pending steps, next action | [state](docs/memory/state.md) |
+| Where behavior lives: posting, locks, idempotency, schema, API, security, messaging | [implementation](docs/memory/implementation.md) |
+| Commands, test navigation, evidence rules and limits | [verification](docs/memory/verification.md) |
+| Compact dated timeline of past reviews, fixes, closed findings and superseded evidence | [history](docs/memory/history.md) |
+| Setup, credentials, endpoints, demo, environment variables | [README](README.md) |
+| Original 2026-09-07 plan; historical, load only when needed | [archive](docs/memory/archive/2026-09-07-plan.md) |
+
+Canonical detail documents: [remediation plan](docs/review-remediation-plan.md) (findings, steps 1–6, acceptance criteria), [V4 evidence](docs/ledger-integrity-v4.md), [step 2 evidence](docs/api-security-step2.md), [QA audit](docs/qa-audit-2026-09-11.md), [test-gap evidence](docs/test-gap-evidence-2026-09-13.md), [independent review](docs/review-by-harvey-with-claude.md), [build evidence](docs/build-evidence.md).
 
 ## Retrieval and maintenance
 
-1. Check `git status --short` and `git log -5 --oneline`. If the baseline changed, inspect the relevant committed diff before trusting a note; distinguish uncommitted work.
-2. Read this index, then one relevant note and the linked source/tests. Use `rg` for symbols or headings instead of loading all docs, reports or the archive.
-3. Current user instructions govern task scope. Code/configuration establish implemented behavior; tests/reports establish only what they exercise. Memory and reviews are summaries, not proof or new authorization. Resolve contradictions against the relevant source and record uncertainty.
-4. After a meaningful change, update the affected note's fact, source and checked date/commit. Separate **confirmed decision**, **implemented**, **historically reported**, and **pending**. Do not mark a fix or test verified without evidence.
-5. Keep this index under about 60 lines and each active note under about 120 lines. Link to canonical docs for detail; move superseded history to the archive. These are project conventions, not Codex limits.
-6. Before a context reset, record only durable decisions and unfinished work: objective/scope, completed changes, evidence, blocker (if any), and next action with file/symbol. Replace a stale handoff when completed; avoid accumulating session transcripts, tool output, secrets or duplicate checklists.
+1. Check `git status --short` and `git log -5 --oneline` first; if the baseline moved, inspect the committed diff before trusting a note.
+2. Read this index, then one note and the linked source or tests. Use `rg` for symbols instead of loading every document or the archive.
+3. The user's current instruction sets scope. Code establishes behavior; tests and reports establish only what they exercise; memory and reviews are summaries, not proof or authorization.
+4. After a meaningful change, update `state.md` (baseline, evidence, open items) and the affected note, then add one dated row to `history.md`. Separate **decided**, **implemented**, **verified**, **historically reported** and **pending**. Never mark a fix verified without fresh evidence.
+5. Keep this index under about 50 lines and each note under about 80. Move superseded facts to `history.md`, never into active notes. The goal and must-fulfil block above must survive every rewrite.
+6. Before a context reset, record only objective, completed changes, evidence, blocker and next action with file and symbol in `state.md`. No transcripts, tool output or secrets.
 
-The small root [AGENTS.md](AGENTS.md) routes Codex to this index. `MEMORY.md` is explicitly requested by that file; it is not assumed to be a built-in instruction filename. See [official instruction discovery](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+[AGENTS.md](AGENTS.md) routes agents here; `MEMORY.md` is requested explicitly by that file, not a built-in instruction filename.
