@@ -21,6 +21,16 @@ class RateLimitTest {
   }
 
   @Test
+  void missingRedisResultAllowsRequestAndRecordsDegradedOperation() {
+    var redis = mock(StringRedisTemplate.class);
+    when(redis.execute(any(), anyList(), any(), any())).thenReturn(null);
+    var metrics = new SimpleMeterRegistry();
+
+    assertThat(new RedisRateLimiter(redis, metrics, 2, 60).allow("alice")).isTrue();
+    assertThat(metrics.counter("wallet.rate_limit.degraded").count()).isEqualTo(1);
+  }
+
+  @Test
   void redisFailureAllowsRequestAndRecordsDegradedOperation() {
     var redis = mock(StringRedisTemplate.class);
     when(redis.execute(any(), anyList(), any(), any()))

@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Last checked: 2026-09-11 QA audit at `760f4b0` (coverage, widened mutation, black-box resilience), on top of the 2026-09-10 step 2 verification. See [evidence and limits](docs/memory/verification.md).
+Last checked: 2026-09-13 test-gap work from `e66f363`. Fresh full gate: 97 unit + 264 integration cases; PIT 52/52. See [evidence and limits](docs/memory/verification.md).
 This is a retrieval index and source-backed snapshot, not an instruction to execute a backlog.
 
 ## Requirement:
@@ -17,8 +17,9 @@ This is a retrieval index and source-backed snapshot, not an instruction to exec
 - Provisioning, credit/debit, balance/history, transfers, full credit/debit refunds, daily/trusted/promotion rewards, outbox/projection and reconciliation are implemented.
 - V4 implements indexed predecessor/final-tail checks, trusted integrity-function name resolution, populated-data preflight and a separate bounded operational audit. Fresh real-PostgreSQL regression, upgrade, deadline and long-history evidence is recorded.
 - Step 2 filters recipient funds from fresh/stored transfer HTTP receipts and verifies controller authorization plus configured JWT decoding; [evidence](docs/api-security-step2.md).
-- 2026-09-11 QA audit at `760f4b0`: JaCoCo 90.7% line / 68.3% branch; PIT widened to the whole service is 76% (configured gate covers 47 of 900 lines); 176/179 black-box checks passed. Open findings: database-down returns a framework 500 not 503 (F-01), one bad Kafka record stalls every projection (F-02), oversized event integers narrow silently (F-03); debit reversal and missing-player paths are untested in automation and the refund race cannot detect loss of its lock. See [QA audit](docs/qa-audit-2026-09-11.md).
-- Remaining production work includes error/history coverage, messaging durability/recovery and a controlled V4 deployment. The corrected second review does not establish readiness. Generic commit checks do not enforce all operation semantics; inverse refunds are checked by the audit. See the evidence note.
+- Historical 2026-09-11 [QA audit](docs/qa-audit-2026-09-11.md): combined JaCoCo 90.7% / 68.3%, expanded PIT 76% (signed-JWT IT excluded), black-box 176/179. Open product findings: database-down framework 500 (F-01), poison event can stall the affected consumer's partitions (F-02), oversized event integers narrow silently (F-03).
+- [Test-gap work](docs/test-gap-evidence-2026-09-13.md) covers service debit reversals, missing players, exact race codes, projection first delivery/zero balance and actual listener dispatch; manual mutants fail and restored controls pass. Unit-only coverage rises to 30.0% line / 40.2% branch; combined 97.2% / 100%. Broader PIT: 290/307 killed (94.5%), nine survived, eight uncovered, zero timeouts/errors; exclusions and remaining evidence limits are documented. Application code is unchanged.
+- Remaining production work includes outage error mapping, messaging durability/recovery and a controlled V4 deployment. The corrected second review does not establish readiness. Generic commit checks do not enforce all operation semantics; inverse refunds are checked by the audit. See the evidence note.
 
 ## Read only what the task needs
 

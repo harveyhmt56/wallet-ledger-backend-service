@@ -74,17 +74,20 @@ class WalletLedgerIT extends PostgresIntegrationTest {
   void exactlyFiftyOfOneHundredConcurrentDebitsSucceed() throws Exception {
     UUID player = player();
     credit(player, 500);
-    List<Integer> outcomes =
+    List<CommandResult> outcomes =
         concurrent(
             100,
             n ->
                 command(
-                        "debit",
-                        Map.of("player", player, "amount", 10),
-                        () -> wallets.debit(player, 10, "test", "concurrent", "test", ref()))
-                    .status());
-    assertThat(outcomes).filteredOn(s -> s == 200).hasSize(50);
-    assertThat(outcomes).filteredOn(s -> s == 409).hasSize(50);
+                    "debit",
+                    Map.of("player", player, "amount", 10),
+                    () -> wallets.debit(player, 10, "test", "concurrent", "test", ref())));
+    assertThat(outcomes).filteredOn(r -> r.status() == 200).hasSize(50);
+    assertThat(outcomes)
+        .filteredOn(r -> r.status() == 409)
+        .hasSize(50)
+        .allSatisfy(
+            r -> assertThat(r.body().path("code").asText()).isEqualTo("INSUFFICIENT_FUNDS"));
     assertThat(wallets.balance(player)).containsEntry("balance", 0L).containsEntry("sequence", 51L);
   }
 
@@ -164,17 +167,19 @@ class WalletLedgerIT extends PostgresIntegrationTest {
     UUID player = player();
     Map<String, Object> original = credit(player, 100);
     UUID transaction = (UUID) original.get("transactionId");
-    List<Integer> outcomes =
+    List<CommandResult> outcomes =
         concurrent(
             20,
             n ->
                 command(
-                        "refund",
-                        Map.of("id", transaction),
-                        () -> wallets.refund(transaction, "admin", "cancel", "test", ref()))
-                    .status());
-    assertThat(outcomes).filteredOn(s -> s == 200).hasSize(1);
-    assertThat(outcomes).filteredOn(s -> s == 409).hasSize(19);
+                    "refund",
+                    Map.of("id", transaction),
+                    () -> wallets.refund(transaction, "admin", "cancel", "test", ref())));
+    assertThat(outcomes).filteredOn(r -> r.status() == 200).hasSize(1);
+    assertThat(outcomes)
+        .filteredOn(r -> r.status() == 409)
+        .hasSize(19)
+        .allSatisfy(r -> assertThat(r.body().path("code").asText()).isEqualTo("ALREADY_REFUNDED"));
     assertThat(wallets.balance(player)).containsEntry("balance", 0L);
     assertThat(
             jdbc.queryForObject(
@@ -185,7 +190,8 @@ class WalletLedgerIT extends PostgresIntegrationTest {
     UUID creditId = (UUID) credit(player, 20).get("transactionId");
     wallets.debit(player, 20, "test", "purchase", "test", ref());
     assertThatThrownBy(() -> wallets.refund(creditId, "admin", "cancel", "test", ref()))
-        .isInstanceOf(BusinessException.class);
+        .isInstanceOfSatisfying(
+            BusinessException.class, e -> assertThat(e.code()).isEqualTo("INSUFFICIENT_FUNDS"));
     assertThat(wallets.balance(player)).containsEntry("balance", 0L);
   }
 

@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -56,11 +58,57 @@ class JwtSecurityTest {
         .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"PLAYER", "SERVICE"})
+  void filterLevelDenialsReturnAForbiddenProblemBeforeTheAdminController(String role)
+      throws Exception {
+    when(decoder.decode("non-admin"))
+        .thenReturn(
+            Jwt.withTokenValue("non-admin")
+                .header("alg", "RS256")
+                .subject("caller")
+                .claim("roles", List.of(role))
+                .build());
+
+    http.perform(get("/actuator/probe").header("Authorization", "Bearer non-admin"))
+        .andExpect(status().isForbidden())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  void adminCanReachTheFilterProtectedController() throws Exception {
+    when(decoder.decode("admin"))
+        .thenReturn(
+            Jwt.withTokenValue("admin")
+                .header("alg", "RS256")
+                .subject("admin")
+                .claim("roles", List.of("ADMIN"))
+                .build());
+
+    http.perform(get("/actuator/probe").header("Authorization", "Bearer admin"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.subject").value("admin"));
+  }
+
+  @Test
+  void anonymousRequestToAdminRouteUsesTheAuthenticationProblemHandler() throws Exception {
+    http.perform(get("/actuator/probe"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+  }
+
   @RestController
   static class Probe {
     @GetMapping("/probe")
     @PreAuthorize("hasRole('PLAYER')")
     Map<String, String> get(Authentication auth) {
+      return Map.of("subject", auth.getName());
+    }
+
+    @GetMapping("/actuator/probe")
+    Map<String, String> admin(Authentication auth) {
       return Map.of("subject", auth.getName());
     }
   }

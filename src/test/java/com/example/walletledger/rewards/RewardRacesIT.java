@@ -38,7 +38,10 @@ class RewardRacesIT extends PostgresIntegrationTest {
     assertThat(rewards.daily(player, "test"))
         .containsEntry("streak", 1)
         .containsEntry("amount", 10L);
-    assertThatThrownBy(() -> rewards.daily(player, "test")).isInstanceOf(BusinessException.class);
+    assertThatThrownBy(() -> rewards.daily(player, "test"))
+        .isInstanceOfSatisfying(
+            BusinessException.class,
+            error -> assertThat(error.code()).isEqualTo("DAILY_ALREADY_CLAIMED"));
     when(clock.instant()).thenReturn(Instant.parse("2026-09-08T00:00:00Z"));
     assertThat(rewards.daily(player, "test"))
         .containsEntry("streak", 2)
@@ -62,16 +65,26 @@ class RewardRacesIT extends PostgresIntegrationTest {
         concurrent(
             30,
             n ->
-                commands
-                    .execute(
-                        "player",
-                        UUID.randomUUID().toString(),
-                        "claim",
-                        Map.of("completion", completion),
-                        () -> rewards.claim(player, REWARD, completion, "player"))
-                    .status());
-    assertThat(results).filteredOn(s -> s == 200).hasSize(1);
-    assertThat(results).filteredOn(s -> s == 409).hasSize(29);
+                commands.execute(
+                    "player",
+                    UUID.randomUUID().toString(),
+                    "claim",
+                    Map.of("completion", completion),
+                    () -> rewards.claim(player, REWARD, completion, "player")));
+    assertThat(results).filteredOn(result -> result.status() == 200).hasSize(1);
+    assertThat(results)
+        .filteredOn(result -> result.status() == 409)
+        .hasSize(29)
+        .allSatisfy(
+            result ->
+                assertThat(result.body().path("code").asText())
+                    .isEqualTo("REWARD_ALREADY_CLAIMED"));
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from reward_claim where completion_id=?",
+                Long.class,
+                UUID.fromString(completion)))
+        .isEqualTo(1);
     assertThat(wallets.balance(player))
         .containsEntry("balance", 100L)
         .containsEntry("sequence", 1L);
@@ -90,16 +103,19 @@ class RewardRacesIT extends PostgresIntegrationTest {
         concurrent(
             500,
             n ->
-                commands
-                    .execute(
-                        "test",
-                        UUID.randomUUID().toString(),
-                        "promotion",
-                        Map.of("player", players.get(n)),
-                        () -> rewards.promotion(players.get(n), promotion, "test"))
-                    .status());
-    assertThat(results).filteredOn(s -> s == 200).hasSize(100);
-    assertThat(results).filteredOn(s -> s == 409).hasSize(400);
+                commands.execute(
+                    "test",
+                    UUID.randomUUID().toString(),
+                    "promotion",
+                    Map.of("player", players.get(n)),
+                    () -> rewards.promotion(players.get(n), promotion, "test")));
+    assertThat(results).filteredOn(result -> result.status() == 200).hasSize(100);
+    assertThat(results)
+        .filteredOn(result -> result.status() == 409)
+        .hasSize(400)
+        .allSatisfy(
+            result ->
+                assertThat(result.body().path("code").asText()).isEqualTo("PROMOTION_EXHAUSTED"));
     assertThat(
             jdbc.queryForObject(
                 "select count(distinct player_id) from promotion_claim where promotion_id=?",
@@ -127,14 +143,17 @@ class RewardRacesIT extends PostgresIntegrationTest {
     wallets.credit(player, Long.MAX_VALUE, "test", "max", "test", UUID.randomUUID().toString());
     UUID promotion = campaign(1, 25);
     assertThatThrownBy(() -> rewards.promotion(player, promotion, "test"))
-        .isInstanceOf(BusinessException.class);
+        .isInstanceOfSatisfying(
+            BusinessException.class, error -> assertThat(error.code()).isEqualTo("BALANCE_LIMIT"));
     assertThat(
             jdbc.queryForObject(
                 "select claimed_count from promotion where promotion_id=?",
                 Integer.class,
                 promotion))
         .isZero();
-    assertThatThrownBy(() -> rewards.daily(player, "test")).isInstanceOf(BusinessException.class);
+    assertThatThrownBy(() -> rewards.daily(player, "test"))
+        .isInstanceOfSatisfying(
+            BusinessException.class, error -> assertThat(error.code()).isEqualTo("BALANCE_LIMIT"));
     assertThat(
             jdbc.queryForObject(
                 "select count(*) from daily_streak where player_id=?", Long.class, player))
@@ -145,7 +164,8 @@ class RewardRacesIT extends PostgresIntegrationTest {
             .get("completionReference")
             .toString();
     assertThatThrownBy(() -> rewards.claim(player, REWARD, completion, "test"))
-        .isInstanceOf(BusinessException.class);
+        .isInstanceOfSatisfying(
+            BusinessException.class, error -> assertThat(error.code()).isEqualTo("BALANCE_LIMIT"));
     assertThat(
             jdbc.queryForObject(
                 "select count(*) from reward_claim where completion_id=?",

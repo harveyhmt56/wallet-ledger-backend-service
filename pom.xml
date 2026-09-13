@@ -75,6 +75,9 @@
             <param>com.example.walletledger.*.domain.*</param>
             <param>com.example.walletledger.wallet.api.TransferReceipt</param>
             <param>com.example.walletledger.configuration.RequiredJwtConfiguration</param>
+            <param>com.example.walletledger.configuration.ApiProblems</param>
+            <param>com.example.walletledger.configuration.RateLimitFilter</param>
+            <param>com.example.walletledger.configuration.RedisRateLimiter</param>
           </targetClasses>
           <targetTests><param>com.example.walletledger.*Test</param></targetTests>
           <threads>4</threads>
