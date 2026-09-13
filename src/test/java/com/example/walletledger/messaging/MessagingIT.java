@@ -15,7 +15,10 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -36,22 +39,82 @@ class MessagingIT extends PostgresIntegrationTest {
     UUID wallet = UUID.randomUUID();
     String newer = event(wallet, 5, 80);
     projection.accept(newer);
+    assertProjection(wallet, 5, 80);
+    assertConsumed(wallet, 1);
     projection.accept(newer);
+    assertProjection(wallet, 5, 80);
+    assertConsumed(wallet, 1);
     projection.accept(event(wallet, 3, 20));
+    assertProjection(wallet, 5, 80);
+    assertConsumed(wallet, 2);
+  }
+
+  @Test
+  void zeroBalanceIsAppliedAndOlderEventsCannotRestoreSpentFunds() throws Exception {
+    UUID wallet = UUID.randomUUID();
+    projection.accept(event(wallet, 1, 0));
+    assertProjection(wallet, 1, 0);
+    projection.accept(event(wallet, 2, 80));
+    assertProjection(wallet, 2, 80);
+    String spent = event(wallet, 3, 0);
+    projection.accept(spent);
+    assertProjection(wallet, 3, 0);
+    projection.accept(event(wallet, 2, 80));
+    projection.accept(spent);
+    assertProjection(wallet, 3, 0);
+    assertConsumed(wallet, 4);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"0, 0", "-1, 0", "1, -1"})
+  void invalidSequenceOrBalanceDoesNotConsumeTheEvent(long sequence, long balance)
+      throws Exception {
+    UUID wallet = UUID.randomUUID();
+    String invalid = event(wallet, sequence, balance);
+    assertThatThrownBy(() -> projection.accept(invalid))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid balance event");
+    assertConsumed(wallet, 0);
     assertThat(
             sql.queryForObject(
-                "select balance from wallet_projection where wallet_id=?", Long.class, wallet))
-        .isEqualTo(80);
-    assertThat(
-            sql.queryForObject(
-                "select wallet_sequence from wallet_projection where wallet_id=?",
-                Long.class,
-                wallet))
-        .isEqualTo(5);
-    assertThat(
-            sql.queryForObject(
-                "select count(*) from consumed_event where wallet_id=?", Long.class, wallet))
-        .isEqualTo(2);
+                "select count(*) from wallet_projection where wallet_id=?", Long.class, wallet))
+        .isZero();
+  }
+
+  @Test
+  void failedProjectionWriteRollsBackDeduplicationSoTheSameEventCanRetry() throws Exception {
+    UUID wallet = UUID.randomUUID();
+    String payload = event(wallet, 1, 20);
+    String function = "reject_projection_" + wallet.toString().replace("-", "");
+    JdbcTemplate migration = migrationJdbc();
+    migration.execute(
+        "create function "
+            + function
+            + "() returns trigger language plpgsql as $$ begin if NEW.wallet_id = '"
+            + wallet
+            + "'::uuid then raise exception 'projection write unavailable'; end if; return NEW; end $$");
+    try {
+      migration.execute(
+          "create trigger "
+              + function
+              + " before update on wallet_projection for each row execute function "
+              + function
+              + "()");
+      assertThatThrownBy(() -> projection.accept(payload))
+          .isInstanceOf(DataAccessException.class)
+          .hasMessageContaining("projection write unavailable");
+      assertConsumed(wallet, 0);
+      assertThat(
+              sql.queryForObject(
+                  "select count(*) from wallet_projection where wallet_id=?", Long.class, wallet))
+          .isZero();
+    } finally {
+      migration.execute("drop trigger if exists " + function + " on wallet_projection");
+      migration.execute("drop function " + function + "()");
+    }
+    projection.accept(payload);
+    assertProjection(wallet, 1, 20);
+    assertConsumed(wallet, 1);
   }
 
   @Test
@@ -211,5 +274,20 @@ class MessagingIT extends PostgresIntegrationTest {
             "2026-09-07T00:00:00Z",
             "schemaVersion",
             1));
+  }
+
+  private void assertProjection(UUID wallet, long sequence, long balance) {
+    assertThat(
+            sql.queryForMap(
+                "select wallet_sequence,balance from wallet_projection where wallet_id=?", wallet))
+        .containsEntry("wallet_sequence", sequence)
+        .containsEntry("balance", balance);
+  }
+
+  private void assertConsumed(UUID wallet, long count) {
+    assertThat(
+            sql.queryForObject(
+                "select count(*) from consumed_event where wallet_id=?", Long.class, wallet))
+        .isEqualTo(count);
   }
 }

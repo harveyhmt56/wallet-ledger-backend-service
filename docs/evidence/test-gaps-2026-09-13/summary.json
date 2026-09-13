@@ -1,0 +1,941 @@
+{
+  "date": "2026-09-13",
+  "baseline": "e66f363034ac3b69fc35072392cb20dd4a71e05e",
+  "branch": "codex/close-test-gaps",
+  "productionChanged": false,
+  "versions": {
+    "java": "GraalVM21.0.8",
+    "springBoot": "3.5.16",
+    "maven": "3.9.11",
+    "pit": "1.30.0",
+    "pitJUnitPlugin": "1.2.3",
+    "jacoco": "0.8.13"
+  },
+  "fullGate": {
+    "surefire": {
+      "tests": 97,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "failsafe": {
+      "tests": 264,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "pit": {
+      "KILLED": 52
+    },
+    "coverage": {
+      "INSTRUCTION": {
+        "covered": 4049,
+        "missed": 104
+      },
+      "BRANCH": {
+        "covered": 164,
+        "missed": 0
+      },
+      "LINE": {
+        "covered": 875,
+        "missed": 25
+      },
+      "COMPLEXITY": {
+        "covered": 263,
+        "missed": 9
+      },
+      "METHOD": {
+        "covered": 181,
+        "missed": 9
+      },
+      "CLASS": {
+        "covered": 41,
+        "missed": 0
+      }
+    },
+    "duration": "approximately64seconds",
+    "command": "JAVA_HOME=<GraalVM21.0.8> ./mvnw -B -ntp clean org.jacoco:jacoco-maven-plugin:0.8.13:prepare-agent verify -Pmutation org.jacoco:jacoco-maven-plugin:0.8.13:report",
+    "configuredTargetClasses": [
+      "com.example.walletledger.*.domain.*",
+      "com.example.walletledger.wallet.api.TransferReceipt",
+      "com.example.walletledger.configuration.RequiredJwtConfiguration",
+      "com.example.walletledger.configuration.ApiProblems",
+      "com.example.walletledger.configuration.RateLimitFilter",
+      "com.example.walletledger.configuration.RedisRateLimiter"
+    ],
+    "targetTests": [
+      "com.example.walletledger.*Test"
+    ],
+    "mutationThreshold": 80,
+    "coverageThreshold": 80
+  },
+  "unitBefore": {
+    "suite": "unit only (*Test)",
+    "tests": {
+      "tests": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "coverage": {
+      "INSTRUCTION": {
+        "covered": 674,
+        "missed": 3479
+      },
+      "BRANCH": {
+        "covered": 22,
+        "missed": 142
+      },
+      "LINE": {
+        "covered": 154,
+        "missed": 746
+      },
+      "COMPLEXITY": {
+        "covered": 58,
+        "missed": 214
+      },
+      "METHOD": {
+        "covered": 48,
+        "missed": 142
+      },
+      "CLASS": {
+        "covered": 18,
+        "missed": 23
+      }
+    }
+  },
+  "unitAfter": {
+    "tests": 97,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "coverage": {
+      "INSTRUCTION": {
+        "covered": 1179,
+        "missed": 2974
+      },
+      "BRANCH": {
+        "covered": 66,
+        "missed": 98
+      },
+      "LINE": {
+        "covered": 270,
+        "missed": 630
+      },
+      "COMPLEXITY": {
+        "covered": 103,
+        "missed": 169
+      },
+      "METHOD": {
+        "covered": 71,
+        "missed": 119
+      },
+      "CLASS": {
+        "covered": 24,
+        "missed": 17
+      }
+    }
+  },
+  "broadDiagnosticSuperseded": {
+    "total": 307,
+    "statuses": {
+      "TIMED_OUT": 5,
+      "KILLED": 283,
+      "NO_COVERAGE": 8,
+      "SURVIVED": 11
+    }
+  },
+  "walletFocusedFinal": {
+    "total": 88,
+    "statuses": {
+      "KILLED": 76,
+      "SURVIVED": 11,
+      "NO_COVERAGE": 1
+    },
+    "remaining": [
+      {
+        "status": "SURVIVED",
+        "testsRun": 33,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "credit",
+        "methodDescription": "(Ljava/util/UUID;JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/util/Map;",
+        "lineNumber": "61",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to com/example/walletledger/wallet/application/WalletService::metadata",
+        "indexes": [
+          "8"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 9,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "debit",
+        "methodDescription": "(Ljava/util/UUID;JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/util/Map;",
+        "lineNumber": "79",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to com/example/walletledger/wallet/application/WalletService::metadata",
+        "indexes": [
+          "8"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 9,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "debit",
+        "methodDescription": "(Ljava/util/UUID;JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/util/Map;",
+        "lineNumber": "80",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to com/example/walletledger/wallet/application/WalletService::lockReference",
+        "indexes": [
+          "15"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 5,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "history",
+        "methodDescription": "(Ljava/util/UUID;Ljava/lang/Long;I)Ljava/util/Map;",
+        "lineNumber": "219",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.ConditionalsBoundaryMutator",
+        "description": "changed conditional boundary",
+        "indexes": [
+          "11"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 4,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "history",
+        "methodDescription": "(Ljava/util/UUID;Ljava/lang/Long;I)Ljava/util/Map;",
+        "lineNumber": "219",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.ConditionalsBoundaryMutator",
+        "description": "changed conditional boundary",
+        "indexes": [
+          "14"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 3,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "history",
+        "methodDescription": "(Ljava/util/UUID;Ljava/lang/Long;I)Ljava/util/Map;",
+        "lineNumber": "219",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.ConditionalsBoundaryMutator",
+        "description": "changed conditional boundary",
+        "indexes": [
+          "21"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 1,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "history",
+        "methodDescription": "(Ljava/util/UUID;Ljava/lang/Long;I)Ljava/util/Map;",
+        "lineNumber": "256",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.ConditionalsBoundaryMutator",
+        "description": "changed conditional boundary",
+        "indexes": [
+          "94"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 33,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "lambda$lockWallets$9",
+        "methodDescription": "(Ljava/util/UUID;)V",
+        "lineNumber": "396",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to com/example/walletledger/wallet/application/WalletService::required",
+        "indexes": [
+          "6"
+        ]
+      },
+      {
+        "status": "NO_COVERAGE",
+        "testsRun": 0,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "lambda$reconciliation$8",
+        "methodDescription": "(Ljava/sql/ResultSet;I)Ljava/util/Map;",
+        "lineNumber": "275",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.EmptyObjectReturnValsMutator",
+        "description": "replaced return value with Collections.emptyMap for com/example/walletledger/wallet/application/WalletService::lambda$reconciliation$8",
+        "indexes": [
+          "26"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 33,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "lockReference",
+        "methodDescription": "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+        "lineNumber": "425",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to com/example/walletledger/wallet/application/WalletService::lockBusiness",
+        "indexes": [
+          "8"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 9,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "refund",
+        "methodDescription": "(Ljava/util/UUID;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/util/Map;",
+        "lineNumber": "179",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.ConditionalsBoundaryMutator",
+        "description": "changed conditional boundary",
+        "indexes": [
+          "216"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 14,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "transfer",
+        "methodDescription": "(Ljava/util/UUID;Ljava/util/UUID;JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/util/Map;",
+        "lineNumber": "104",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to com/example/walletledger/wallet/application/WalletService::required",
+        "indexes": [
+          "12"
+        ]
+      }
+    ]
+  },
+  "outboxFocusedFinal": {
+    "exit": 1,
+    "mutationThreshold": 80,
+    "coverageThreshold": 80,
+    "counts": {
+      "NO_COVERAGE": 4,
+      "KILLED": 10
+    },
+    "focus": [
+      {
+        "status": "KILLED",
+        "line": "84",
+        "description": "negated conditional",
+        "killingTest": "com.example.walletledger.messaging.OutboxRelayTest.[engine:junit-jupiter]/[class:com.example.walletledger.messaging.OutboxRelayTest]/[method:failedSendIsNotAcknowledgedAndRecordsFailure()]"
+      },
+      {
+        "status": "KILLED",
+        "line": "84",
+        "description": "removed call to java/lang/Thread::interrupt",
+        "killingTest": "com.example.walletledger.messaging.OutboxRelayTest.[engine:junit-jupiter]/[class:com.example.walletledger.messaging.OutboxRelayTest]/[method:interruptedSendKeepsInterruptFlagAndStopsBeforeTheNextEvent()]"
+      }
+    ]
+  },
+  "freshJvmJwtMutations": [
+    {
+      "mutation": "roles_claim",
+      "exit": 1,
+      "tests": 5,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0,
+      "messages": [
+        "Status expected:<200> but was:<403>",
+        "Status expected:<200> but was:<403>"
+      ]
+    },
+    {
+      "mutation": "role_prefix",
+      "exit": 1,
+      "tests": 5,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0,
+      "messages": [
+        "Status expected:<200> but was:<403>",
+        "Status expected:<200> but was:<403>"
+      ]
+    },
+    {
+      "mutation": "roles_converter",
+      "exit": 1,
+      "tests": 5,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0,
+      "messages": [
+        "Status expected:<200> but was:<403>",
+        "Status expected:<200> but was:<403>"
+      ]
+    },
+    {
+      "mutation": "restored_control",
+      "exit": 0,
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "messages": []
+    }
+  ],
+  "rewardControllerMutations": [
+    {
+      "mutant": "boundary",
+      "replacement": "result.status() > 400",
+      "exit_code": 1,
+      "tests": "3",
+      "failures": "1",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "mutant": "negate",
+      "replacement": "result.status() < 400",
+      "exit_code": 1,
+      "tests": "3",
+      "failures": "3",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "evidenceLimits": [
+    "Report exact statuses; PIT detected scores can include timeouts.",
+    "Fresh-JVM JWT experiments and scoped runs do not rewrite broader XML outcomes.",
+    "ConfiguredJwtHttpIT is included in full gate, excluded from broader PIT due known repeat-in-JVM fixture incompatibility.",
+    "No production deployment, live IdP, hosted CI or resilience recovery validated."
+  ],
+  "broadFinal": {
+    "total": 307,
+    "statuses": {
+      "KILLED": 290,
+      "NO_COVERAGE": 8,
+      "SURVIVED": 9
+    },
+    "killedPercent": 94.46,
+    "elapsed": "approximately194seconds",
+    "exit": 0,
+    "targetClasses": [
+      "com.example.walletledger.*"
+    ],
+    "targetTests": [
+      "com.example.walletledger.*Test",
+      "com.example.walletledger.*IT"
+    ],
+    "excludedTestClasses": [
+      "com.example.walletledger.configuration.ConfiguredJwtHttpIT",
+      "com.example.walletledger.wallet.LoadMeasurement",
+      "com.example.walletledger.wallet.LedgerHistoryMeasurement"
+    ],
+    "threads": 3,
+    "mutationThreshold": 80,
+    "coverageThreshold": 80,
+    "command": "JAVA_HOME=<GraalVM21.0.8> ./mvnw -B -ntp test-compile -Pmutation org.pitest:pitest-maven:mutationCoverage",
+    "scratchPomSha256": "663edaeab8327ed473376bf71d9858c8a2ed37155e7cbb27ff77f90bdfac1678",
+    "remaining": [
+      {
+        "status": "NO_COVERAGE",
+        "testsRun": 0,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "lambda$reconciliation$8",
+        "methodDescription": "(Ljava/sql/ResultSet;I)Ljava/util/Map;",
+        "lineNumber": "275",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.EmptyObjectReturnValsMutator",
+        "description": "replaced return value with Collections.emptyMap for com/example/walletledger/wallet/application/WalletService::lambda$reconciliation$8",
+        "indexes": [
+          "26"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 12,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "refund",
+        "methodDescription": "(Ljava/util/UUID;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/util/Map;",
+        "lineNumber": "179",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.ConditionalsBoundaryMutator",
+        "description": "changed conditional boundary",
+        "indexes": [
+          "216"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 20,
+        "mutatedClass": "com.example.walletledger.wallet.application.WalletService",
+        "mutatedMethod": "transfer",
+        "methodDescription": "(Ljava/util/UUID;Ljava/util/UUID;JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/util/Map;",
+        "lineNumber": "104",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to com/example/walletledger/wallet/application/WalletService::required",
+        "indexes": [
+          "12"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 3,
+        "mutatedClass": "com.example.walletledger.idempotency.CommandExecutor",
+        "mutatedMethod": "execute",
+        "methodDescription": "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Object;Ljava/util/function/Supplier;)Lcom/example/walletledger/idempotency/CommandResult;",
+        "lineNumber": "112",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.MathMutator",
+        "description": "Replaced long multiplication with division",
+        "indexes": [
+          "94"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 11,
+        "mutatedClass": "com.example.walletledger.rewards.application.RewardService",
+        "mutatedMethod": "promotion",
+        "methodDescription": "(Ljava/util/UUID;Ljava/util/UUID;Ljava/lang/String;)Ljava/util/Map;",
+        "lineNumber": "99",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to com/example/walletledger/rewards/application/RewardService::requirePlayer",
+        "indexes": [
+          "5"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 2,
+        "mutatedClass": "com.example.walletledger.configuration.SecurityConfiguration",
+        "mutatedMethod": "jwt",
+        "methodDescription": "(Lorg/springframework/security/config/annotation/web/builders/HttpSecurity;Lcom/fasterxml/jackson/databind/ObjectMapper;Lcom/example/walletledger/configuration/RedisRateLimiter;Lorg/springframework/boot/autoconfigure/security/oauth2/resource/OAuth2ResourceServerProperties;Z)Lorg/springframework/security/web/SecurityFilterChain;",
+        "lineNumber": "71",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to org/springframework/security/oauth2/server/resource/authentication/JwtGrantedAuthoritiesConverter::setAuthoritiesClaimName",
+        "indexes": [
+          "16"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 2,
+        "mutatedClass": "com.example.walletledger.configuration.SecurityConfiguration",
+        "mutatedMethod": "jwt",
+        "methodDescription": "(Lorg/springframework/security/config/annotation/web/builders/HttpSecurity;Lcom/fasterxml/jackson/databind/ObjectMapper;Lcom/example/walletledger/configuration/RedisRateLimiter;Lorg/springframework/boot/autoconfigure/security/oauth2/resource/OAuth2ResourceServerProperties;Z)Lorg/springframework/security/web/SecurityFilterChain;",
+        "lineNumber": "72",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to org/springframework/security/oauth2/server/resource/authentication/JwtGrantedAuthoritiesConverter::setAuthorityPrefix",
+        "indexes": [
+          "21"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 2,
+        "mutatedClass": "com.example.walletledger.configuration.SecurityConfiguration",
+        "mutatedMethod": "jwt",
+        "methodDescription": "(Lorg/springframework/security/config/annotation/web/builders/HttpSecurity;Lcom/fasterxml/jackson/databind/ObjectMapper;Lcom/example/walletledger/configuration/RedisRateLimiter;Lorg/springframework/boot/autoconfigure/security/oauth2/resource/OAuth2ResourceServerProperties;Z)Lorg/springframework/security/web/SecurityFilterChain;",
+        "lineNumber": "74",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to org/springframework/security/oauth2/server/resource/authentication/JwtAuthenticationConverter::setJwtGrantedAuthoritiesConverter",
+        "indexes": [
+          "32"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 2,
+        "mutatedClass": "com.example.walletledger.configuration.SecurityConfiguration",
+        "mutatedMethod": "jwt",
+        "methodDescription": "(Lorg/springframework/security/config/annotation/web/builders/HttpSecurity;Lcom/fasterxml/jackson/databind/ObjectMapper;Lcom/example/walletledger/configuration/RedisRateLimiter;Lorg/springframework/boot/autoconfigure/security/oauth2/resource/OAuth2ResourceServerProperties;Z)Lorg/springframework/security/web/SecurityFilterChain;",
+        "lineNumber": "75",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.NullReturnValsMutator",
+        "description": "replaced return value with null for com/example/walletledger/configuration/SecurityConfiguration::jwt",
+        "indexes": [
+          "53"
+        ]
+      },
+      {
+        "status": "NO_COVERAGE",
+        "testsRun": 0,
+        "mutatedClass": "com.example.walletledger.configuration.SecurityConfiguration",
+        "mutatedMethod": "lambda$local$0",
+        "methodDescription": "(Lcom/fasterxml/jackson/databind/ObjectMapper;Ljakarta/servlet/http/HttpServletRequest;Ljakarta/servlet/http/HttpServletResponse;Lorg/springframework/security/core/AuthenticationException;)V",
+        "lineNumber": "55",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator",
+        "description": "removed call to com/example/walletledger/configuration/SecurityConfiguration::writeProblem",
+        "indexes": [
+          "8"
+        ]
+      },
+      {
+        "status": "NO_COVERAGE",
+        "testsRun": 0,
+        "mutatedClass": "com.example.walletledger.messaging.outbox.OutboxRelay",
+        "mutatedMethod": "lambda$new$0",
+        "methodDescription": "(Lcom/example/walletledger/messaging/outbox/OutboxRelay;)D",
+        "lineNumber": "33",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.PrimitiveReturnsMutator",
+        "description": "replaced double return with 0.0d for com/example/walletledger/messaging/outbox/OutboxRelay::lambda$new$0",
+        "indexes": [
+          "5"
+        ]
+      },
+      {
+        "status": "NO_COVERAGE",
+        "testsRun": 0,
+        "mutatedClass": "com.example.walletledger.messaging.outbox.OutboxRelay",
+        "mutatedMethod": "lambda$new$1",
+        "methodDescription": "(Lcom/example/walletledger/messaging/outbox/OutboxRelay;)D",
+        "lineNumber": "34",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.PrimitiveReturnsMutator",
+        "description": "replaced double return with 0.0d for com/example/walletledger/messaging/outbox/OutboxRelay::lambda$new$1",
+        "indexes": [
+          "5"
+        ]
+      },
+      {
+        "status": "NO_COVERAGE",
+        "testsRun": 0,
+        "mutatedClass": "com.example.walletledger.messaging.outbox.OutboxRelay",
+        "mutatedMethod": "oldestAge",
+        "methodDescription": "()D",
+        "lineNumber": "105",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.PrimitiveReturnsMutator",
+        "description": "replaced double return with 0.0d for com/example/walletledger/messaging/outbox/OutboxRelay::oldestAge",
+        "indexes": [
+          "18"
+        ]
+      },
+      {
+        "status": "NO_COVERAGE",
+        "testsRun": 0,
+        "mutatedClass": "com.example.walletledger.messaging.outbox.OutboxRelay",
+        "mutatedMethod": "pending",
+        "methodDescription": "()D",
+        "lineNumber": "99",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.PrimitiveReturnsMutator",
+        "description": "replaced double return with 0.0d for com/example/walletledger/messaging/outbox/OutboxRelay::pending",
+        "indexes": [
+          "19"
+        ]
+      },
+      {
+        "status": "NO_COVERAGE",
+        "testsRun": 0,
+        "mutatedClass": "com.example.walletledger.messaging.kafka.MessagingConfiguration",
+        "mutatedMethod": "balanceTopic",
+        "methodDescription": "()Lorg/apache/kafka/clients/admin/NewTopic;",
+        "lineNumber": "39",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.NullReturnValsMutator",
+        "description": "replaced return value with null for com/example/walletledger/messaging/kafka/MessagingConfiguration::balanceTopic",
+        "indexes": [
+          "10"
+        ]
+      },
+      {
+        "status": "SURVIVED",
+        "testsRun": 1,
+        "mutatedClass": "com.example.walletledger.messaging.kafka.MessagingConfiguration",
+        "mutatedMethod": "listener",
+        "methodDescription": "(Lcom/example/walletledger/messaging/kafka/BalanceProjection;)Lcom/example/walletledger/messaging/kafka/MessagingConfiguration$BalanceListener;",
+        "lineNumber": "48",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.NullReturnValsMutator",
+        "description": "replaced return value with null for com/example/walletledger/messaging/kafka/MessagingConfiguration::listener",
+        "indexes": [
+          "7"
+        ]
+      },
+      {
+        "status": "NO_COVERAGE",
+        "testsRun": 0,
+        "mutatedClass": "com.example.walletledger.messaging.kafka.MessagingConfiguration",
+        "mutatedMethod": "relay",
+        "methodDescription": "(Lorg/springframework/jdbc/core/simple/JdbcClient;Lorg/springframework/transaction/PlatformTransactionManager;Lorg/springframework/kafka/core/KafkaTemplate;Lio/micrometer/core/instrument/MeterRegistry;)Lcom/example/walletledger/messaging/outbox/OutboxRelay;",
+        "lineNumber": "30",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.NullReturnValsMutator",
+        "description": "replaced return value with null for com/example/walletledger/messaging/kafka/MessagingConfiguration::relay",
+        "indexes": [
+          "10"
+        ]
+      }
+    ]
+  },
+  "manualContractExperiments": {
+    "wallet": {
+      "baseline": "e66f363",
+      "branch": "codex/close-test-gaps",
+      "productionChanged": false,
+      "files": {
+        "src/test/java/com/example/walletledger/wallet/WalletLedgerIT.java": "b78a4f60d605563cb36bfc61ddc0909eb5efe9f4dafd166cd55f0b0aafd1038b",
+        "src/test/java/com/example/walletledger/wallet/WalletRejectionsIT.java": "29266edfb3eedd7b61750f417027d0a92a8bd9bb4eb0416303548e6797ebad6e",
+        "src/test/java/com/example/walletledger/wallet/RefundConcurrencyIT.java": "26b8c83c4af577f82bd489a9b30a28ac4321a12f1ff2aa94b3ab91d48c9f1825"
+      },
+      "focusedControl": {
+        "command": "JAVA_HOME=/Users/harvey/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.8/Contents/Home ./mvnw -B -ntp spotless:apply -DspotlessFiles=\".*(WalletLedgerIT|WalletRejectionsIT|RefundConcurrencyIT)\\.java\" test-compile failsafe:integration-test failsafe:verify -Dit.test=WalletLedgerIT,WalletRejectionsIT,RefundConcurrencyIT",
+        "cases": 38,
+        "newCases": 30,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "durationSeconds": 9.554,
+        "log": "/private/tmp/wallet-test-gaps-wallet-final-control.log"
+      },
+      "manualMutants": [
+        {
+          "change": "Remove WalletService.refund lockBusiness(\"refund:\" + transactionId)",
+          "test": "RefundConcurrencyIT",
+          "cases": 2,
+          "failures": 2,
+          "errors": 0,
+          "reason": "Original uniqueness violation leaks instead of returning ALREADY_REFUNDED receipt",
+          "log": "/private/tmp/wallet-test-gaps-wallet-final-refund-mutant.log"
+        },
+        {
+          "change": "Remove WalletService.transfer lockReference(\"TRANSFER\", source, reference)",
+          "test": "WalletRejectionsIT#duplicateTransferReferenceRejectsWithoutAnotherPosting",
+          "cases": 1,
+          "failures": 1,
+          "errors": 0,
+          "reason": "DuplicateKeyException instead of BusinessException BUSINESS_REFERENCE_USED",
+          "log": "/private/tmp/wallet-test-gaps-wallet-transfer-reference-mutant.log"
+        },
+        {
+          "change": "Remove WalletService.refund lockReference(\"REFUND\", source, reference)",
+          "test": "WalletRejectionsIT#duplicateRefundReferenceCannotReverseAnotherOriginal",
+          "cases": 1,
+          "failures": 1,
+          "errors": 0,
+          "reason": "DuplicateKeyException instead of BusinessException BUSINESS_REFERENCE_USED",
+          "log": "/private/tmp/wallet-test-gaps-wallet-refund-reference-mutant.log"
+        }
+      ],
+      "metadataExtension": {
+        "file": "src/test/java/com/example/walletledger/wallet/WalletRejectionsIT.java",
+        "sha256": "5855521465e4e493b2cb63ecd227ec30eb54664d616fbabf0668ae59ede4dba1",
+        "caseCountUnchanged": true,
+        "controlCases": 28,
+        "controlFailures": 0,
+        "controlErrors": 0,
+        "controlDurationSeconds": 9.031,
+        "controlLog": "/private/tmp/wallet-test-gaps-wallet-metadata-control.log",
+        "mutant": "WalletService.text value.length() > max replaced with >= max",
+        "mutantCases": 8,
+        "mutantFailures": 8,
+        "mutantErrors": 0,
+        "mutantDurationSeconds": 7.65,
+        "mutantLog": "/private/tmp/wallet-test-gaps-wallet-metadata-boundary-mutant.log",
+        "assertions": "For transfer/refund actor/reason/source/reference: reject null, blank, max+1 without state changes; accept max, preserve every metadata field, update expected wallet balances.",
+        "restoredControl": {
+          "cases": 28,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "durationSeconds": 7.495,
+          "log": "/private/tmp/wallet-test-gaps-wallet-metadata-restored-control.log"
+        }
+      },
+      "finalWalletScope": {
+        "files": {
+          "WalletLedgerIT.java": "b78a4f60d605563cb36bfc61ddc0909eb5efe9f4dafd166cd55f0b0aafd1038b",
+          "WalletRejectionsIT.java": "fe3400e9c9c45697cbb0cfa484ac1ca0432994b037b21aeb190812ccd4706f61",
+          "RefundConcurrencyIT.java": "26b8c83c4af577f82bd489a9b30a28ac4321a12f1ff2aa94b3ab91d48c9f1825",
+          "ProvisionConcurrencyIT.java": "c60b8746bc5c5d63a051b01053c8a69ab71b545f50c5bb71e29d333ab8a03d33"
+        },
+        "control": {
+          "cases": 39,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 14.168,
+          "log": "/private/tmp/wallet-test-gaps-wallet-final-expanded-control.log"
+        },
+        "provisionLockManualMutant": {
+          "cases": 1,
+          "failures": 1,
+          "errors": 0,
+          "seconds": 8.536,
+          "log": "/private/tmp/wallet-test-gaps-wallet-provision-lock-mutant.log",
+          "observed": "DuplicateKeyException for player_pkey instead of PLAYER_EXISTS receipt"
+        },
+        "pit": {
+          "counts": {
+            "KILLED": 76,
+            "SURVIVED": 11,
+            "NO_COVERAGE": 1
+          },
+          "lineCoverage": "267/273",
+          "score": 86.36363636363636,
+          "testStrength": 87.35632183908046,
+          "threads": 1,
+          "timeoutConstant": 10000,
+          "mutationThreshold": 80,
+          "coverageThreshold": 80,
+          "targetClasses": [
+            "com.example.walletledger.wallet.application.WalletService"
+          ],
+          "targetTests": [
+            "com.example.walletledger.wallet.*Test",
+            "com.example.walletledger.wallet.Wallet*IT",
+            "com.example.walletledger.wallet.RefundConcurrencyIT",
+            "com.example.walletledger.wallet.ProvisionConcurrencyIT"
+          ],
+          "selectedMutants": [
+            {
+              "method": "balance",
+              "line": "192",
+              "description": "removed call to com/example/walletledger/wallet/application/WalletService::required",
+              "status": "KILLED",
+              "killingTest": "com.example.walletledger.wallet.WalletRejectionsIT.[engine:junit-jupiter]/[class:com.example.walletledger.wallet.WalletRejectionsIT]/[method:requiredWalletAndPostingIdentifiersHaveNamedValidation()]"
+            },
+            {
+              "method": "provision",
+              "line": "36",
+              "description": "removed call to com/example/walletledger/wallet/application/WalletService::required",
+              "status": "KILLED",
+              "killingTest": "com.example.walletledger.wallet.WalletRejectionsIT.[engine:junit-jupiter]/[class:com.example.walletledger.wallet.WalletRejectionsIT]/[method:requiredWalletAndPostingIdentifiersHaveNamedValidation()]"
+            },
+            {
+              "method": "provision",
+              "line": "37",
+              "description": "removed call to com/example/walletledger/wallet/application/WalletService::lockBusiness",
+              "status": "KILLED",
+              "killingTest": "com.example.walletledger.wallet.ProvisionConcurrencyIT.[engine:junit-jupiter]/[class:com.example.walletledger.wallet.ProvisionConcurrencyIT]/[method:competingProvisionsReturnOnePlayerAndOneNamedConflict()]"
+            },
+            {
+              "method": "transfer",
+              "line": "104",
+              "description": "removed call to com/example/walletledger/wallet/application/WalletService::required",
+              "status": "SURVIVED",
+              "killingTest": ""
+            }
+          ],
+          "log": "/private/tmp/wallet-test-gaps-wallet-final-targeted-pit.log",
+          "xml": "/private/tmp/wallet-test-gaps-wallet/evidence/wallet-pit-final/mutations.xml",
+          "secondsWithRestoredProvisionControl": 41.317
+        },
+        "beforeNullAndProvisionTests": {
+          "counts": {
+            "KILLED": 73,
+            "SURVIVED": 14,
+            "NO_COVERAGE": 1
+          },
+          "selectedStatuses": "balance192 required, provision36 required, provision37 lockBusiness and transfer104 required all SURVIVED; no timeouts/errors",
+          "seconds": 30.959,
+          "xml": "/private/tmp/wallet-test-gaps-wallet/evidence/wallet-pit-before-null-identifiers/mutations.xml"
+        }
+      }
+    },
+    "reward": {
+      "source_sha256": "fe89f6a82fd79eb751d9880d7bd2695a5f5735dc46d22f04ce3ed0f9a9327732",
+      "results": [
+        {
+          "mutant": "completion-duplicate-guard",
+          "target": "RewardRacesIT#differentKeysCannotClaimOneTrustedCompletionTwice",
+          "exit_code": 1,
+          "suites": [
+            {
+              "name": "com.example.walletledger.rewards.RewardRacesIT",
+              "tests": "1",
+              "failures": "1",
+              "errors": "0",
+              "skipped": "0"
+            }
+          ]
+        },
+        {
+          "mutant": "promotion-duplicate-guard",
+          "target": "RewardRejectionsIT#repeatedPromotionClaimIsDistinctFromAnExhaustedCampaign",
+          "exit_code": 1,
+          "suites": [
+            {
+              "name": "com.example.walletledger.rewards.RewardRejectionsIT",
+              "tests": "1",
+              "failures": "1",
+              "errors": "0",
+              "skipped": "0"
+            }
+          ]
+        },
+        {
+          "mutant": "daily-player-precheck",
+          "target": "RewardRejectionsIT#missingPlayerIsRejectedBeforeAnyRewardWork",
+          "exit_code": 1,
+          "suites": [
+            {
+              "name": "com.example.walletledger.rewards.RewardRejectionsIT",
+              "tests": "4",
+              "failures": "1",
+              "errors": "0",
+              "skipped": "0"
+            }
+          ]
+        },
+        {
+          "mutant": "completion-source-validation",
+          "target": "RewardRejectionsIT#invalidCompletionMetadataLeavesNoEvidence",
+          "exit_code": 1,
+          "suites": [
+            {
+              "name": "com.example.walletledger.rewards.RewardRejectionsIT",
+              "tests": "12",
+              "failures": "4",
+              "errors": "0",
+              "skipped": "0"
+            }
+          ]
+        }
+      ]
+    },
+    "projection": [
+      {
+        "mutation": "dedup-negation",
+        "exit": 1,
+        "tests": 1,
+        "failures": 0,
+        "errors": 1,
+        "skipped": 0,
+        "messages": [
+          "Incorrect result size: expected 1, actual 0"
+        ]
+      },
+      {
+        "mutation": "reject-zero-balance",
+        "exit": 1,
+        "tests": 1,
+        "failures": 0,
+        "errors": 1,
+        "skipped": 0,
+        "messages": [
+          "Invalid balance event"
+        ]
+      },
+      {
+        "mutation": "accept-zero-sequence",
+        "exit": 1,
+        "tests": 3,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "messages": [
+          "\nExpecting code to raise a throwable."
+        ]
+      },
+      {
+        "mutation": "remove-projection-transaction",
+        "exit": 1,
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0,
+        "messages": [
+          "\nexpected: 0L\n but was: 1L"
+        ]
+      }
+    ]
+  },
+  "artifactsSha256": {
+    "final-expanded-pit/target/pit-reports/mutations.xml": "bfbdc9add466e58576100c706df76276c306d7a3eeee9ca348b1f9bd6204a37f",
+    "final-gate/target/pit-reports/mutations.xml": "4198dadbc576f328e3a7bacca56aab71f3a8c97dde9c29e1fdeb78328d3a6117",
+    "final-gate/target/site/jacoco/jacoco.xml": "ea30f04acb3ac58610c83cdd8293320debddfa75b8255c11514b9f98b29fdbb0",
+    "final-unit/target/site/jacoco/jacoco.xml": "63716b47b04afaa1adc82173c0a1aea9ab0863e0dff6fdc29b94a908d3672e8c"
+  },
+  "cleanup": "No running Testcontainers found after final gate and broad PIT; existing Compose stack untouched."
+}
