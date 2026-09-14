@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Baseline: `f2a7e07` plus QA tests on `codex/QA-full-project-verify` (application unchanged since `760f4b0`). Last checked 2026-09-14. This is a retrieval index and source-backed snapshot, not a backlog to execute.
+Baseline: `6ba729d` plus verified F-01 working-tree changes on `coder/recovery-db-outage`. Last checked 2026-09-14. This is a retrieval index and source-backed snapshot, not a backlog to execute.
 
 ## Project goal and must-fulfil requirements
 
@@ -18,8 +18,8 @@ Required stack: Java 21, Spring Boot 3.5.16, PostgreSQL, Redis, Kafka, Flyway, D
 ## Current state (2026-09-14)
 
 - Implemented and verified locally: every mandatory and supporting feature. V4 (`9ef2639`) closed the quadratic commit check and TEMP-shadow bypass; step 2 (`760f4b0`) closed the recipient-balance disclosure and added the HTTP authorization matrix and signed-JWT tests; `e6472f7` closed test-quality findings F-04–F-08 (tests and `pom.xml` only).
-- Fresh full QA: 97 unit + 268 integration cases, zero failures/errors/skips; PIT 52/52; SQL mutations 12/12; JaCoCo 97.2% line / 100% branch; broader PIT 290/307 (94.5%). Four new pressure cases and nine manual mutations verified. [Audit](docs/qa-audit-2026-09-14.md).
-- Freshly reproduced, open: F-01 database down → framework 500 (money-safe recovery); F-02 poison Kafka record stalls later records; F-03 oversized event integers corrupt the projection; F-09/F-10/F-11 and review items N1/N3/F4–F7 low. Remediation steps 3–6 pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
+- F-01 fixed and verified in the working tree: transaction-start connection failures → structured 503; unexpected transaction failures → safe 500. Full gate: 117 unit + 269 integration cases, no failures/errors/skips; PIT 68/68; SQL mutations 12/12. [Evidence](docs/database-outage-f01.md). Prior audit JaCoCo 97.2%/100% and broader PIT 290/307 are historical, not remeasured for this fix.
+- Open: F-02 poison Kafka record stalls later records; F-03 oversized event integers corrupt the projection; F-09/F-10/F-11 and review items N1/N3/F4–F7 low. Remaining steps 3–6 pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
 
 ## Sub-memories: read only what the task needs; do not preload notes
 

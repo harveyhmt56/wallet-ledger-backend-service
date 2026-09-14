@@ -21,8 +21,11 @@ Dated, superseded facts. Each row links to its canonical document; nothing here 
 | 2026-09-13 | `e6472f7` | **Test-gap closure F-04–F-08** and unit expansion, tests and `pom.xml` only. 148 cases added → 97 unit + 264 IT; normal PIT gate 26/26 → 52/52 with three adapter classes added; combined JaCoCo 90.7/68.3 → 97.2/100; broader PIT 76.0 → 94.5%; 15 manual contract mutations + 3 JWT role deletions detected; restored controls pass. Reward rejection snapshot helper: 295 ms / 11 MB → 5.8 ms / 561 B at 20k postings | [test-gap evidence](../test-gap-evidence-2026-09-13.md), [counts](../evidence/test-gaps-2026-09-13/summary.json) |
 | 2026-09-13 | `orchestrate/memory-mgt-v2` | Memory compacted into requirements / state / implementation / verification / history on top of `e6472f7`. The earlier `orchestrate/memory-mgt-v1` restructure (from `760f4b0`) was never merged and is superseded | — |
 | 2026-09-14 | `f2a7e07` + QA working tree | Full money QA; four regression cases added. Final 97+268 cases, PIT 52/52, 12 SQL mutants, JaCoCo 875/900 lines and 164/164 branches; broad PIT 290/307. Four money/five adapter manual mutations detected with restored controls. F-01/F-02/F-03 reproduced, outage recovery safe. No application changes; one restart harness error corrected; disposable containers removed | [audit](../qa-audit-2026-09-14.md), [counts](../evidence/qa-2026-09-14/final-gate-summary.json) |
+| 2026-09-14 | `6ba729d` + F-01 working tree | Step 3 first slice: cause-aware transaction-start 503 and safe unexpected-transaction 500. Red: 20 advice errors and real HTTP 500 instead of 503. Green: 117 unit + 269 IT, PIT 68/68 (25/25 advice), 12 SQL mutations; stopped DB and forced fresh acquisition recover once with exact durable-state/replay checks. No remaining test containers; other step 3 work pending | [F-01 evidence](../database-outage-f01.md) |
 
 ## Closed findings
+
+- **F-01 stopped-database HTTP error contract.** Closed in the working tree based on `6ba729d`, verified 2026-09-14; classification limits and remaining error work are explicit in [F-01 evidence](../database-outage-f01.md).
 
 - **F1 / R1 quadratic trigger.** Closed by V4, verified 2026-09-10.
 - **R2 TEMP-table shadowing.** Closed by V4 (qualified names, pinned `search_path`); TEMP privilege intentionally retained on `wallet_app`.

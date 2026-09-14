@@ -1,6 +1,6 @@
 # Committed implementation map
 
-Checked 2026-09-13 against `e6472f7`; application code and migrations unchanged since `760f4b0`. [Index](../../MEMORY.md).
+Checked 2026-09-14 against `6ba729d` plus the F-01 working-tree fix in `ApiProblems`; migrations unchanged since `760f4b0`. [Index](../../MEMORY.md).
 Read [open findings and pending steps](state.md#open-findings) alongside this map before making safety/readiness claims.
 
 ## Entry points
@@ -52,7 +52,8 @@ Spring's [nested propagation documentation](https://docs.spring.io/spring-framew
 - SERVICE/ADMIN: provision, credit, debit, refund and authorized reads. PLAYER: own reads, transfer from authenticated subject, daily/reward/promotion claims. Completion evidence is SERVICE-only; reconciliation is ADMIN-only.
 - Local credentials are demo-only; nonlocal configuration uses JWT `roles` and subject. Nonlocal startup requires a nonblank issuer and nonempty, nonblank audiences. Boot still configures the decoder. Real HTTP tests verify signed tokens with a loopback JWK fixture; production provider integration remains external.
 - Daily state, trusted completion claims and promotion capacity commit with the credit; applied policy versions are stored. Promotion validates player existence/active status before locking the campaign, then checks campaign enabled/duplicate/exhaustion state. See [requirements](requirements.md) for policy scope.
-- Error envelopes contain stable codes, but `ApiProblems` maps every handled `DataAccessException` to 503 and generic validation omits field details. Transfer HTTP success responses use an explicit [sender field allowlist](../../src/main/java/com/example/walletledger/wallet/api/TransferReceipt.java) after command execution/replay, filtering recipient funds from new and legacy receipts without altering stored responses. Errors pass through unchanged; [step 2 evidence](../api-security-step2.md).
+- `ApiProblems` now maps known transaction-start connection failures to 503 with same-key retry guidance; other `TransactionException`s become safe `500 INTERNAL_ERROR` without a retry header. The ERROR log contains only the exception class; existing structured logging carries correlation. [F-01 classification and tests](../database-outage-f01.md). Every handled `DataAccessException` still maps to 503, and generic validation still omits field details.
+- Transfer HTTP success responses use an explicit [sender field allowlist](../../src/main/java/com/example/walletledger/wallet/api/TransferReceipt.java) after command execution/replay, filtering recipient funds from new and legacy receipts without altering stored responses. Errors pass through unchanged; [step 2 evidence](../api-security-step2.md).
 
 ## Messaging, Redis and runtime
 
