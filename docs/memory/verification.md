@@ -1,6 +1,6 @@
 # Verification: commands, test navigation and evidence rules
 
-Checked 2026-09-14 against `f2a7e07` plus four QA integration cases; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
+Checked 2026-09-14 against `6ba729d` plus the F-01 working-tree fix/tests; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
 
 ## Commands
 
@@ -37,6 +37,7 @@ CI ([verify.yml](../../.github/workflows/verify.yml)) runs `clean verify -Pmutat
 | Signed JWT over real HTTP with loopback JWK; required issuer/audiences fail closed; filter-level role denials with a fake decoder | [ConfiguredJwtHttpIT](../../src/test/java/com/example/walletledger/configuration/ConfiguredJwtHttpIT.java), [JwtConfigurationTest](../../src/test/java/com/example/walletledger/configuration/JwtConfigurationTest.java), [JwtSecurityTest](../../src/test/java/com/example/walletledger/configuration/JwtSecurityTest.java) |
 | Kafka outage/lease, first delivery, duplicate/stale/zero snapshots, dedup rollback; production listener with committed offsets; relay counters/interrupt; event parsing | [MessagingIT](../../src/test/java/com/example/walletledger/messaging/MessagingIT.java), [BalanceListenerIT](../../src/test/java/com/example/walletledger/messaging/kafka/BalanceListenerIT.java), [OutboxRelayTest](../../src/test/java/com/example/walletledger/messaging/OutboxRelayTest.java), [BalanceProjectionTest](../../src/test/java/com/example/walletledger/messaging/BalanceProjectionTest.java) |
 | Redis TTL/quota; 429, caller identity, bypasses, null-result fail-open; problem advice via MockMvc | [RedisRateLimiterIT](../../src/test/java/com/example/walletledger/configuration/RedisRateLimiterIT.java), [RateLimitFilterTest](../../src/test/java/com/example/walletledger/configuration/RateLimitFilterTest.java), [ApiProblemsTest](../../src/test/java/com/example/walletledger/configuration/ApiProblemsTest.java) |
+| Transaction-start availability vs unexpected transaction failures; real stopped-DB 503, unchanged durable state, same-key recovery and replay | [ApiProblemsTest](../../src/test/java/com/example/walletledger/configuration/ApiProblemsTest.java), [DatabaseOutageHttpIT](../../src/test/java/com/example/walletledger/configuration/DatabaseOutageHttpIT.java); [F-01 commands and evidence](../database-outage-f01.md) |
 
 Tests use disposable Testcontainers PostgreSQL/Redis/Kafka, never H2 or the Compose database. [Shared test configuration](../../src/test/java/com/example/walletledger/support/PostgresIntegrationTest.java) disables listener startup; `BalanceListenerIT` enables the production listener with its own containers. `ConfiguredJwtHttpIT` cannot run repeatedly in one JVM (excluded from broader PIT only).
 
