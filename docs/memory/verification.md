@@ -1,6 +1,6 @@
 # Verification: commands, test navigation and evidence rules
 
-Checked 2026-09-14 against `6ba729d` plus the F-01 working-tree fix/tests; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
+Checked 2026-09-15 against `5ffb0d2`; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
 
 ## Commands
 
@@ -25,7 +25,7 @@ CI ([verify.yml](../../.github/workflows/verify.yml)) runs `clean verify -Pmutat
 | Behavior | Focused source to inspect |
 | --- | --- |
 | 100 debits of 10 from 500 → 50 successes, 50 rejections, zero; 100 same-key copies; credit/transfer/refund races with exact loser codes; history | [WalletLedgerIT](../../src/test/java/com/example/walletledger/wallet/WalletLedgerIT.java) |
-| Two-instance 100-debit/duplicate races, mixed-operation independent oracle, full history/event evidence; forced committed-balance freshness | [MoneyPressureHttpIT](../../src/test/java/com/example/walletledger/wallet/MoneyPressureHttpIT.java), `DatabaseSafeguardsIT.competingDebitRejectsAfterWaitingForAnEarlierDebitToCommit`; [fresh audit/evidence](../qa-audit-2026-09-14.md) |
+| Two-instance 100-debit/duplicate races, mixed-operation independent oracle, full history/event evidence; forced committed-balance freshness | [MoneyPressureHttpIT](../../src/test/java/com/example/walletledger/wallet/MoneyPressureHttpIT.java), `DatabaseSafeguardsIT.competingDebitRejectsAfterWaitingForAnEarlierDebitToCommit`; [2026-09-14 audit](../qa-audit-2026-09-14.md) |
 | Forced overlapping refunds of credit and debit originals → one reversal, loser `ALREADY_REFUNDED`; forced duplicate provision → `PLAYER_EXISTS` | [RefundConcurrencyIT](../../src/test/java/com/example/walletledger/wallet/RefundConcurrencyIT.java), [ProvisionConcurrencyIT](../../src/test/java/com/example/walletledger/wallet/ProvisionConcurrencyIT.java) |
 | Missing/suspended player, duplicate transfer/refund reference, unsupported refund, identifier/metadata limits, pagination bounds | [WalletRejectionsIT](../../src/test/java/com/example/walletledger/wallet/WalletRejectionsIT.java) |
 | Immutable/incomplete journals, outbox failure rollback, held wallet lock | [DatabaseSafeguardsIT](../../src/test/java/com/example/walletledger/wallet/DatabaseSafeguardsIT.java) |
@@ -47,4 +47,4 @@ Tests use disposable Testcontainers PostgreSQL/Redis/Kafka, never H2 or the Comp
 - Red evidence for a test-only change comes from deliberately corrupted scratch implementations plus restored passing controls; never implement a production defect to make a test fail, and never reconstruct historical TDD commits.
 - Coverage demonstrates execution, not correctness of every failure case; PIT survivors/uncovered mutants need manual interpretation before being called gaps or safe.
 - Still unverified anywhere: hosted CI execution, live identity provider, multi-broker durability, competing relay leases, automatic topic creation, backup/restore, production latency targets. Compose is a local demo, not high availability.
-- Canonical detail: [remediation plan](../review-remediation-plan.md) (findings, steps, acceptance criteria), [V4 evidence](../ledger-integrity-v4.md), [step 2 evidence](../api-security-step2.md), [QA audit](../qa-audit-2026-09-11.md), [test-gap evidence](../test-gap-evidence-2026-09-13.md), [build evidence](../build-evidence.md).
+- Canonical detail: [remediation plan](../review-remediation-plan.md) (findings, steps, acceptance criteria), [V4 evidence](../ledger-integrity-v4.md), [step 2 evidence](../api-security-step2.md), [QA audit 2026-09-14](../qa-audit-2026-09-14.md), [F-01 evidence](../database-outage-f01.md); older reports are linked from [history](history.md).
