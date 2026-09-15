@@ -1,6 +1,6 @@
-# Committed implementation map
+# Implementation map
 
-Checked 2026-09-15 against `5ffb0d2`; migrations unchanged since `760f4b0`. [Index](../../MEMORY.md).
+Checked 2026-09-15 against `9b9ccd9` plus F-02 working-tree changes on `coder/mq-issue-fix`; V5 added, V1–V4 unchanged. [Index](../../MEMORY.md).
 Read [open findings and pending steps](state.md#open-findings) alongside this map before making safety/readiness claims.
 
 ## Entry points
@@ -39,6 +39,7 @@ Spring's [nested propagation documentation](https://docs.spring.io/spring-framew
 | [V2__rewards.sql](../../src/main/resources/db/migration/V2__rewards.sql) | `reward_definition`, `action_completion`, `reward_claim`, `daily_streak`, `daily_claim`, `promotion`, `promotion_claim`; seed policies and grants |
 | [V3__messaging.sql](../../src/main/resources/db/migration/V3__messaging.sql) | `consumed_event`, `wallet_projection` |
 | [V4__indexed_ledger_integrity.sql](../../src/main/resources/db/migration/V4__indexed_ledger_integrity.sql) | Write-blocking populated-schema audit, indexed predecessor/final-tail validation, hardened invoker functions and separate full SQL audit; V1–V3 unchanged |
+| [V5__kafka_quarantine.sql](../../src/main/resources/db/migration/V5__kafka_quarantine.sql) | Quarantine keyed by consumer group/topic/partition/offset, UTF-8 payload/key bytes and error metadata; restricted operator replay intent audit |
 
 - Provisioned `wallet_id` equals player UUID; account UUID is separate. Migration and request roles are separated by [role bootstrap](../../docker/postgres/01-roles.sql) and grants; runtime cannot update/delete/truncate journal history. V4 qualifies persistent relation/composite-type references and pins all integrity/audit functions to `pg_catalog, public, pg_temp` with invoker privileges. TEMP-shadow regressions pass with TEMP privileges retained.
 - Deferred checks cover complete journals, ownership, contiguous sequences and running balances. V4 checks each new player entry's predecessor and the final stored wallet against its tail through the existing unique sequence index; multiple postings in one transaction are supported. The preflight establishes a valid immutable base before incremental checks replace V1's quadratic scans. See [V4 design/evidence](../ledger-integrity-v4.md) and PostgreSQL [constraint-trigger timing](https://www.postgresql.org/docs/17/sql-createtrigger.html).
@@ -59,7 +60,7 @@ Spring's [nested propagation documentation](https://docs.spring.io/spring-framew
 
 - Balance event v1: `eventId`, `walletId`, `walletSequence`, `journalTransactionId`, `delta`, `balanceAfter`, `reason`, `occurredAt`, `schemaVersion`. Topic/key: `wallet.balance-changed.v1` / wallet UUID.
 - Relay leases up to 100 rows for 60 seconds using `SKIP LOCKED`; sends outside money transactions; marks delivery after Kafka acknowledgement with lease-token fencing. Duplicates/reordering remain possible. The configured `ledger.outbox.topic` is not wired into the hardcoded topic constant.
-- Consumer commits event-ID deduplication and projection together; only newer sequences replace the absolute balance. It never sums out-of-order deltas. Retryable listener errors use unlimited retry; Spring Kafka retains default fatal classifications. No durable poison-event quarantine exists. Topic creation uses three partitions and replication one, without a local-only profile restriction.
+- Consumer commits event-ID deduplication and projection together; only newer sequences replace the absolute balance. It never sums out-of-order deltas. F-02: `IllegalArgumentException` and default fatal failures quarantine immediately; other failures get three attempts with 1-second back-off, even when exception types change. [KafkaQuarantine](../../src/main/java/com/example/walletledger/messaging/kafka/KafkaQuarantine.java) commits in `REQUIRES_NEW` before recovery returns; write/commit failures escape, retaining source delivery. Duplicate recovery preserves the first row. [Metrics, restricted replay and evidence](../kafka-quarantine-f02.md). Topic creation still uses three partitions and replication one outside a local-only restriction.
 - Redis Lua counter/expiry defaults to 120 authenticated requests per 60 seconds; Actuator bypasses rate limiting. Redis failures fail open and increment `wallet.rate_limit.degraded`. HTTP `Retry-After` is currently hardcoded to 60.
 - Startup Flyway is enabled with a separate migration datasource; it does not inherit Hikari init timeouts. Only pending migrations run. Production must enforce a controlled migration/validation step before disabling startup Flyway on serving instances; see the [upgrade runbook](../ledger-integrity-v4.md#populated-upgrades-and-operational-audit).
 - [application.yml](../../src/main/resources/application.yml) owns timeouts, metrics, health probes and ECS logging; [local profile](../../src/main/resources/application-local.yml) changes demo passwords/logging. Correlation IDs come from [CorrelationFilter](../../src/main/java/com/example/walletledger/configuration/CorrelationFilter.java).

@@ -1,24 +1,32 @@
 package com.example.walletledger.messaging.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import com.example.walletledger.messaging.outbox.OutboxRelay;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -67,6 +75,442 @@ class BalanceListenerIT {
   @Autowired KafkaTemplate<String, String> kafka;
   @Autowired JdbcTemplate sql;
   @Autowired ObjectMapper json;
+  @Autowired DefaultErrorHandler errors;
+  @Autowired com.example.walletledger.wallet.application.WalletService wallets;
+
+  @Test
+  void auditedReplayUsesAuthoritativeOutboxSnapshotAndLeavesMoneyAndEvidenceUnchanged()
+      throws Exception {
+    UUID wallet = UUID.randomUUID();
+    wallets.provision(wallet);
+    wallets.credit(
+        wallet, 35, "operator-test", "credit", "f02-replay", UUID.randomUUID().toString());
+    var source =
+        sql.queryForMap(
+            "select event_id,payload::text from outbox_event where wallet_id=?", wallet);
+    var listener = listeners.getListenerContainers().iterator().next();
+    try (AdminClient admin =
+        AdminClient.create(Map.of("bootstrap.servers", KAFKA.getBootstrapServers()))) {
+      ensureTopic(admin);
+      listener.start();
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(() -> assertThat(listener.getAssignedPartitions()).hasSize(3));
+      var poison =
+          kafka
+              .send(OutboxRelay.TOPIC, 0, wallet.toString(), "{corrupted-in-transit")
+              .get(5, TimeUnit.SECONDS)
+              .getRecordMetadata();
+      awaitOffset(admin, poison);
+      assertThat(quarantined(poison)).isEqualTo(1);
+      UUID attempt = UUID.randomUUID();
+      JdbcTemplate operator = migrationJdbc();
+      assertThat(
+              operator.update(
+                  """
+          insert into kafka_quarantine_replay_attempt
+            (attempt_id, consumer_group, topic, partition_id, record_offset, source_event_id, approved_payload, reason)
+          select ?, q.consumer_group, q.topic, q.partition_id, q.record_offset, o.event_id, o.payload, ?
+          from kafka_quarantine q cross join outbox_event o
+          where q.consumer_group=? and q.topic=? and q.partition_id=? and q.record_offset=?
+            and o.event_id=?
+            and o.payload->>'eventId'=o.event_id::text
+            and o.payload->>'walletId'=o.wallet_id::text
+            and o.payload->>'walletSequence'=o.wallet_sequence::text
+            and o.payload->>'journalTransactionId'=o.journal_transaction_id::text
+          """,
+                  attempt,
+                  "F02 verified source replay",
+                  GROUP,
+                  poison.topic(),
+                  poison.partition(),
+                  poison.offset(),
+                  source.get("event_id")))
+          .isEqualTo(1);
+      var audit =
+          operator.queryForMap(
+              "select approved_payload::text,requested_by,requested_at from kafka_quarantine_replay_attempt where attempt_id=?",
+              attempt);
+      assertThat(audit)
+          .containsEntry("approved_payload", source.get("payload"))
+          .containsEntry("requested_by", "wallet_migration");
+      assertThat(audit.get("requested_at")).isNotNull();
+      String line =
+          operator.queryForObject(
+              "select (approved_payload->>'walletId') || chr(9) || approved_payload::text from kafka_quarantine_replay_attempt where attempt_id=?",
+              String.class,
+              attempt);
+      assertThat(line).startsWith(wallet + "\t").doesNotContain("\n");
+      String[] parts = line.split("\t", 2);
+      kafka.send(OutboxRelay.TOPIC, 0, parts[0], parts[1]).get(5, TimeUnit.SECONDS);
+      var duplicate =
+          kafka
+              .send(OutboxRelay.TOPIC, 0, parts[0], parts[1])
+              .get(5, TimeUnit.SECONDS)
+              .getRecordMetadata();
+      awaitOffset(admin, duplicate);
+      awaitProjection(wallet, 1, 35, 1);
+      assertThat(
+              sql.queryForObject(
+                  "select event_id from consumed_event where wallet_id=?", UUID.class, wallet))
+          .isEqualTo(source.get("event_id"));
+      assertThat(wallets.balance(wallet))
+          .containsEntry("balance", 35L)
+          .containsEntry("sequence", 1L);
+      assertThat(
+              sql.queryForObject(
+                  "select count(*) from outbox_event where wallet_id=?", Long.class, wallet))
+          .isEqualTo(1);
+      assertThat(
+              sql.queryForObject(
+                  "select payload from kafka_quarantine where consumer_group=? and topic=? and partition_id=? and record_offset=?",
+                  byte[].class,
+                  GROUP,
+                  poison.topic(),
+                  poison.partition(),
+                  poison.offset()))
+          .isEqualTo("{corrupted-in-transit".getBytes(StandardCharsets.UTF_8));
+      assertThatThrownBy(
+              () ->
+                  sql.update(
+                      "insert into kafka_quarantine_replay_attempt select * from kafka_quarantine_replay_attempt where attempt_id=?",
+                      attempt))
+          .isInstanceOf(org.springframework.dao.DataAccessException.class)
+          .rootCause()
+          .isInstanceOf(java.sql.SQLException.class)
+          .extracting(failure -> ((java.sql.SQLException) failure).getSQLState())
+          .isEqualTo("42501");
+    } finally {
+      listener.stop();
+    }
+  }
+
+  @Test
+  void poisonRecordsAreDurablyQuarantinedAndLaterRecordsProgressOnBothPartitions()
+      throws Exception {
+    try (AdminClient admin =
+        AdminClient.create(Map.of("bootstrap.servers", KAFKA.getBootstrapServers()))) {
+      ensureTopic(admin);
+      var listener = listeners.getListenerContainers().iterator().next();
+      var attempts = new java.util.concurrent.ConcurrentHashMap<Long, Integer>();
+      errors.setRetryListeners(
+          (record, exception, attempt) -> attempts.merge(record.offset(), 1, Integer::sum));
+      listener.start();
+      try {
+        await()
+            .atMost(Duration.ofSeconds(20))
+            .untilAsserted(() -> assertThat(listener.getAssignedPartitions()).hasSize(3));
+        UUID wallet = UUID.randomUUID();
+        String key = "poison-\u0000-" + wallet;
+        List<String> payloads =
+            Arrays.asList(
+                "{invalid-json",
+                event(wallet, 1, 10).replace("\"schemaVersion\":1", "\"schemaVersion\":2"),
+                "\u0000",
+                null);
+        List<RecordMetadata> poisons = new ArrayList<>();
+        for (String payload : payloads) {
+          poisons.add(
+              kafka
+                  .send(OutboxRelay.TOPIC, 0, key, payload)
+                  .get(5, TimeUnit.SECONDS)
+                  .getRecordMetadata());
+        }
+        var same =
+            kafka
+                .send(OutboxRelay.TOPIC, 0, wallet.toString(), event(wallet, 2, 20))
+                .get(5, TimeUnit.SECONDS)
+                .getRecordMetadata();
+        UUID otherWallet = UUID.randomUUID();
+        var other =
+            kafka
+                .send(OutboxRelay.TOPIC, 1, otherWallet.toString(), event(otherWallet, 1, 30))
+                .get(5, TimeUnit.SECONDS)
+                .getRecordMetadata();
+        awaitProjection(wallet, 2, 20, 1);
+        awaitProjection(otherWallet, 1, 30, 1);
+        awaitOffset(admin, same);
+        awaitOffset(admin, other);
+        for (int i = 0; i < poisons.size(); i++) {
+          var poison = poisons.get(i);
+          var row =
+              sql.queryForMap(
+                  "select * from kafka_quarantine where consumer_group=? and topic=? and partition_id=? and record_offset=?",
+                  GROUP,
+                  poison.topic(),
+                  poison.partition(),
+                  poison.offset());
+          assertThat((byte[]) row.get("record_key"))
+              .isEqualTo(key.getBytes(StandardCharsets.UTF_8));
+          assertThat((byte[]) row.get("payload"))
+              .isEqualTo(
+                  payloads.get(i) == null
+                      ? null
+                      : payloads.get(i).getBytes(StandardCharsets.UTF_8));
+          assertThat(row.get("error_type")).isNotNull();
+          assertThat(row.get("quarantined_at")).isNotNull();
+          assertThat(attempts.get(poison.offset())).isEqualTo(1);
+        }
+      } finally {
+        listener.stop();
+        errors.setRetryListeners();
+      }
+    }
+  }
+
+  private void ensureTopic(AdminClient admin) throws Exception {
+    if (!admin.listTopics().names().get(10, TimeUnit.SECONDS).contains(OutboxRelay.TOPIC)) {
+      admin
+          .createTopics(List.of(new NewTopic(OutboxRelay.TOPIC, 3, (short) 1)))
+          .all()
+          .get(10, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test
+  void quarantineCommitFailureRetainsOffsetAndRestartDeduplicatesRecovery() throws Exception {
+    JdbcTemplate migration = migrationJdbc();
+    migration.execute(
+        """
+        create function f02_reject_quarantine() returns trigger language plpgsql as $$
+        begin raise exception 'injected quarantine commit failure'; end $$
+        """);
+    migration.execute(
+        """
+        create constraint trigger f02_reject_quarantine after insert on kafka_quarantine
+        deferrable initially deferred for each row execute function f02_reject_quarantine()
+        """);
+    var failedRecoveries = new java.util.concurrent.atomic.AtomicInteger();
+    errors.setRetryListeners(
+        new org.springframework.kafka.listener.RetryListener() {
+          @Override
+          public void failedDelivery(
+              org.apache.kafka.clients.consumer.ConsumerRecord<?, ?> record,
+              Exception failure,
+              int attempt) {}
+
+          @Override
+          public void recoveryFailed(
+              org.apache.kafka.clients.consumer.ConsumerRecord<?, ?> record,
+              Exception original,
+              Exception failure) {
+            failedRecoveries.incrementAndGet();
+          }
+        });
+    var listener = listeners.getListenerContainers().iterator().next();
+    try (AdminClient admin =
+        AdminClient.create(Map.of("bootstrap.servers", KAFKA.getBootstrapServers()))) {
+      ensureTopic(admin);
+      listener.start();
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(() -> assertThat(listener.getAssignedPartitions()).hasSize(3));
+      UUID wallet = UUID.randomUUID();
+      var poison =
+          kafka
+              .send(OutboxRelay.TOPIC, 0, wallet.toString(), "{commit-failure")
+              .get(5, TimeUnit.SECONDS)
+              .getRecordMetadata();
+      var valid =
+          kafka
+              .send(OutboxRelay.TOPIC, 0, wallet.toString(), event(wallet, 1, 40))
+              .get(5, TimeUnit.SECONDS)
+              .getRecordMetadata();
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(() -> assertThat(failedRecoveries.get()).isGreaterThanOrEqualTo(2));
+      assertOffsetNotPast(admin, poison);
+      assertThat(quarantined(poison)).isZero();
+      assertThat(
+              sql.queryForObject(
+                  "select count(*) from consumed_event where wallet_id=?", Long.class, wallet))
+          .isZero();
+      assertThat(
+              sql.queryForObject(
+                  "select count(*) from wallet_projection where wallet_id=?", Long.class, wallet))
+          .isZero();
+      migration.execute("drop trigger f02_reject_quarantine on kafka_quarantine");
+      awaitProjection(wallet, 1, 40, 1);
+      awaitOffset(admin, valid);
+      assertThat(quarantined(poison)).isEqualTo(1);
+      var original =
+          sql.queryForMap(
+              "select * from kafka_quarantine where consumer_group=? and topic=? and partition_id=? and record_offset=?",
+              GROUP,
+              poison.topic(),
+              poison.partition(),
+              poison.offset());
+      listener.stop();
+      TopicPartition partition = new TopicPartition(poison.topic(), poison.partition());
+      await()
+          .atMost(Duration.ofSeconds(10))
+          .untilAsserted(
+              () ->
+                  assertThat(
+                          admin
+                              .describeConsumerGroups(List.of(GROUP))
+                              .all()
+                              .get(5, TimeUnit.SECONDS)
+                              .get(GROUP)
+                              .members())
+                      .isEmpty());
+      // Reproduce redelivery after the DB committed but the source offset was not retained.
+      admin
+          .alterConsumerGroupOffsets(
+              GROUP,
+              Map.of(
+                  partition,
+                  new org.apache.kafka.clients.consumer.OffsetAndMetadata(poison.offset())))
+          .all()
+          .get(5, TimeUnit.SECONDS);
+      listener.start();
+      awaitOffset(admin, valid);
+      awaitProjection(wallet, 1, 40, 1);
+      assertThat(quarantined(poison)).isEqualTo(1);
+      assertThat(
+              sql.queryForMap(
+                  "select * from kafka_quarantine where consumer_group=? and topic=? and partition_id=? and record_offset=?",
+                  GROUP,
+                  poison.topic(),
+                  poison.partition(),
+                  poison.offset()))
+          .usingRecursiveComparison()
+          .isEqualTo(original);
+      assertThatThrownBy(
+              () -> sql.update("delete from kafka_quarantine where consumer_group=?", GROUP))
+          .isInstanceOf(org.springframework.dao.DataAccessException.class)
+          .rootCause()
+          .isInstanceOf(java.sql.SQLException.class)
+          .extracting(failure -> ((java.sql.SQLException) failure).getSQLState())
+          .isEqualTo("42501");
+      assertThatThrownBy(
+              () ->
+                  sql.update(
+                      "update kafka_quarantine set error_type='changed' where consumer_group=?",
+                      GROUP))
+          .isInstanceOf(org.springframework.dao.DataAccessException.class)
+          .rootCause()
+          .isInstanceOf(java.sql.SQLException.class)
+          .extracting(failure -> ((java.sql.SQLException) failure).getSQLState())
+          .isEqualTo("42501");
+    } finally {
+      listener.stop();
+      errors.setRetryListeners();
+      migration.execute("drop trigger if exists f02_reject_quarantine on kafka_quarantine");
+      migration.execute("drop function f02_reject_quarantine()");
+    }
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+  void databaseFailureRetriesThenEitherAppliesOrQuarantinesForReplay(boolean repairBeforeExhaustion)
+      throws Exception {
+    JdbcTemplate migration = migrationJdbc();
+    migration.execute(
+        """
+        create function f02_reject_projection() returns trigger language plpgsql as $$
+        begin raise exception 'injected transient projection failure' using errcode='40001'; end $$
+        """);
+    migration.execute(
+        "create trigger f02_reject_projection before insert on consumed_event for each row execute function f02_reject_projection()");
+    var attempts = new java.util.concurrent.atomic.AtomicInteger();
+    errors.setRetryListeners(
+        (record, failure, attempt) -> {
+          attempts.incrementAndGet();
+          if (repairBeforeExhaustion && attempt == 2)
+            migration.execute("drop trigger f02_reject_projection on consumed_event");
+        });
+    var listener = listeners.getListenerContainers().iterator().next();
+    try (AdminClient admin =
+        AdminClient.create(Map.of("bootstrap.servers", KAFKA.getBootstrapServers()))) {
+      ensureTopic(admin);
+      listener.start();
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(() -> assertThat(listener.getAssignedPartitions()).hasSize(3));
+      UUID wallet = UUID.randomUUID();
+      String payload = event(wallet, 1, 60);
+      var failed =
+          kafka
+              .send(OutboxRelay.TOPIC, 0, wallet.toString(), payload)
+              .get(5, TimeUnit.SECONDS)
+              .getRecordMetadata();
+      awaitOffset(admin, failed);
+      if (repairBeforeExhaustion) {
+        assertThat(attempts.get()).isEqualTo(2);
+        assertThat(quarantined(failed)).isZero();
+      } else {
+        assertThat(attempts.get()).isEqualTo(3);
+        assertThat(quarantined(failed)).isEqualTo(1);
+        assertThat(
+                sql.queryForObject(
+                    "select count(*) from consumed_event where wallet_id=?", Long.class, wallet))
+            .isZero();
+        assertThat(
+                sql.queryForObject(
+                    "select count(*) from wallet_projection where wallet_id=?", Long.class, wallet))
+            .isZero();
+        migration.execute("drop trigger f02_reject_projection on consumed_event");
+        // Repeat the exact event ID; the rejected transaction must not have consumed it.
+        var replay =
+            kafka
+                .send(OutboxRelay.TOPIC, 0, wallet.toString(), payload)
+                .get(5, TimeUnit.SECONDS)
+                .getRecordMetadata();
+        awaitOffset(admin, replay);
+      }
+      awaitProjection(wallet, 1, 60, 1);
+    } finally {
+      listener.stop();
+      errors.setRetryListeners();
+      migration.execute("drop trigger if exists f02_reject_projection on consumed_event");
+      migration.execute("drop function f02_reject_projection()");
+    }
+  }
+
+  private JdbcTemplate migrationJdbc() {
+    return new JdbcTemplate(
+        new DriverManagerDataSource(
+            POSTGRES.getJdbcUrl(), "wallet_migration", "wallet_migration_local"));
+  }
+
+  private long quarantined(RecordMetadata record) {
+    return sql.queryForObject(
+        "select count(*) from kafka_quarantine where consumer_group=? and topic=? and partition_id=? and record_offset=?",
+        Long.class,
+        GROUP,
+        record.topic(),
+        record.partition(),
+        record.offset());
+  }
+
+  private void assertOffsetNotPast(AdminClient admin, RecordMetadata record) throws Exception {
+    var offset =
+        admin
+            .listConsumerGroupOffsets(GROUP)
+            .partitionsToOffsetAndMetadata()
+            .get(5, TimeUnit.SECONDS)
+            .get(new TopicPartition(record.topic(), record.partition()));
+    assertThat(offset == null || offset.offset() <= record.offset()).isTrue();
+  }
+
+  private void awaitOffset(AdminClient admin, RecordMetadata record) {
+    await()
+        .atMost(Duration.ofSeconds(20))
+        .untilAsserted(
+            () -> {
+              var offsets =
+                  admin
+                      .listConsumerGroupOffsets(GROUP)
+                      .partitionsToOffsetAndMetadata()
+                      .get(5, TimeUnit.SECONDS);
+              assertThat(offsets)
+                  .containsKey(new TopicPartition(record.topic(), record.partition()));
+              assertThat(
+                      offsets.get(new TopicPartition(record.topic(), record.partition())).offset())
+                  .isEqualTo(record.offset() + 1);
+            });
+  }
 
   @Test
   void listenerPersistsFirstDeliveryAndCommitsOffsetsForDuplicatesAndOlderSnapshots()
@@ -125,6 +569,12 @@ class BalanceListenerIT {
         .atMost(Duration.ofSeconds(20))
         .untilAsserted(
             () -> {
+              assertThat(
+                      sql.queryForObject(
+                          "select count(*) from wallet_projection where wallet_id=?",
+                          Long.class,
+                          wallet))
+                  .isEqualTo(1);
               assertThat(
                       sql.queryForMap(
                           "select wallet_sequence,balance from wallet_projection where wallet_id=?",

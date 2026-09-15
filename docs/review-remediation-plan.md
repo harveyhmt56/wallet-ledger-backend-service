@@ -223,6 +223,8 @@ Acceptance: rejected money paths have explicit status/code and no partial writes
 
 ### Step 4: make event delivery suitable for production
 
+F-02 recovery slice implemented and verified 2026-09-15 in the `coder/mq-issue-fix` working tree: V5 durable quarantine, bounded retries, retained offsets on recovery failure, restart deduplication, audited replay and alert metrics. [Fresh tests and limits](kafka-quarantine-f02.md#fresh-verification-evidence). F-03 strict validation, topic configuration/durability and relay lease work below remain pending.
+
 Affected areas: messaging configuration, strict event DTO/parser, outbox relay, a quarantine migration/recoverer, listener integration tests and operations documentation.
 
 - Make the topic name consistent across producer, listener and configuration. Keep automatic replication-1 topic creation local/test-only; provision and verify production topic replication and minimum ISR.

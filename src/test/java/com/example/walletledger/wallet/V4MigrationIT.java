@@ -49,10 +49,10 @@ class V4MigrationIT {
   }
 
   @Test
-  void freshDatabaseInstallsV4AndHasNoAuditFindings() {
+  void freshDatabaseInstallsCurrentMigrationsAndHasNoAuditFindings() {
     flyway(null).migrate();
 
-    assertThat(flyway(null).info().current().getVersion().getVersion()).isEqualTo("4");
+    assertThat(flyway(null).info().current().getVersion().getVersion()).isEqualTo("5");
     assertThat(runtime().queryForList("select * from public.audit_ledger_integrity()")).isEmpty();
   }
 
@@ -64,7 +64,7 @@ class V4MigrationIT {
 
     flyway(null).migrate();
 
-    assertThat(flyway(null).info().current().getVersion().getVersion()).isEqualTo("4");
+    assertThat(flyway(null).info().current().getVersion().getVersion()).isEqualTo("5");
     assertThat(snapshot()).isEqualTo(before);
     assertThat(runtime().queryForList("select * from public.audit_ledger_integrity()")).isEmpty();
     assertThat(flyway(null).validateWithResult().validationSuccessful).isTrue();

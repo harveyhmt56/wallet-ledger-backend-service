@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Baseline: `main` = `5ffb0d2`, working tree clean. Checked 2026-09-15. This is a retrieval index and source-backed snapshot, not a backlog to execute.
+Baseline: `9b9ccd9` plus verified F-02 working-tree changes on `coder/mq-issue-fix`. Checked 2026-09-15. This is a retrieval index and source-backed snapshot, not a backlog to execute.
 
 ## Project goal and must-fulfil requirements
 
@@ -15,11 +15,11 @@ Must fulfil (graded on money-moving correctness, service design, concurrency and
 
 Required stack: Java 21, Spring Boot 3.5.16, PostgreSQL, Redis, Kafka, Flyway, Docker Compose. Full list, confirmed decisions and invariants: [requirements](docs/memory/requirements.md).
 
-## Current state (2026-09-15, `5ffb0d2`)
+## Current state (2026-09-15, `9b9ccd9` + F-02 working tree)
 
 - Every mandatory and supporting feature is implemented and verified locally. Closed and committed: quadratic commit check and TEMP-shadow bypass (V4, `9ef2639`), recipient-balance disclosure and HTTP authorization matrix (`760f4b0`), test-quality findings F-04–F-08 (`e6472f7`), F-01 stopped-database error contract (`5ffb0d2`).
-- Fresh gate at `5ffb0d2`: 117 unit + 269 integration cases, zero failures/errors/skips; PIT 68/68; 12/12 SQL mutations. [Evidence](docs/database-outage-f01.md).
-- Open: F-02 poison Kafka record stalls later records (high); F-03 oversized event integers corrupt the projection (medium); F-09/F-10/F-11 and review items N1/N3/F4–F7 (low). Remediation steps 3–6 pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
+- F-02 implemented and verified, uncommitted: V5 durable Kafka quarantine, bounded retry, offset/restart safeguards and audited operator replay. Fresh full gate: 129 unit + 274 integration cases, zero failures/errors/skips; PIT 82/84 killed (two unchanged factory methods uncovered); 12/12 SQL mutations. [Evidence](docs/kafka-quarantine-f02.md).
+- Open: F-03 oversized event integers corrupt the projection (medium); F-09/F-10/F-11 and review items N1/N3/F4–F7 (low). Remediation steps 3–6 remain partly pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
 
 ## Sub-memories: read only what the task needs; do not preload notes
 
