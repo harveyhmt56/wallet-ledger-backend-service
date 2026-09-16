@@ -23,6 +23,7 @@ Dated, superseded facts; nothing here needs re-running. Current facts live in [s
 | 2026-09-14 | `5ffb0d2` | **Step 3 first slice, F-01**: cause-aware transaction-start 503 and safe unexpected-transaction 500 in `ApiProblems`; real stopped-DB recovery test | [F-01 evidence](../database-outage-f01.md) |
 | 2026-09-15 | `orchestrate/memory-mgt-v3` | Memory re-baselined on `5ffb0d2`; superseded gate numbers and the archived plan removed from notes | — |
 | 2026-09-15 | `9b9ccd9` + working tree | **Step 4 recovery slice, F-02**: V5 durable Kafka quarantine, bounded retry, offset/commit/restart regressions, audited authoritative replay; full gate and expanded PIT pass | [F-02 evidence](../kafka-quarantine-f02.md) |
+| 2026-09-16 | `863d63f` + working tree | **Step 4 validation slice, F-03**: exact event integer/long checks before writes; parser and real listener quarantine/recovery regressions; full gate and expanded PIT pass; F-02 confirmed committed at baseline | [F-03 evidence](../balance-projection-f03.md) |
 
 ## Closed findings
 
@@ -30,11 +31,12 @@ Dated, superseded facts; nothing here needs re-running. Current facts live in [s
 - **R3 / F2 recipient-balance disclosure and untested HTTP authorization**: closed by step 2 (`760f4b0`), verified 2026-09-10.
 - **F-04–F-08 test-quality findings** (refund-lock blind spot, debit reversal never executed, missing player untested, status-only race assertions, production paths never run under `verify`): closed by `e6472f7`, verified 2026-09-13.
 - **F-01 stopped-database HTTP error contract**: closed by `5ffb0d2`, verified 2026-09-14; classification limits in [F-01 evidence](../database-outage-f01.md).
-- **F-02 poison Kafka record stall**: implemented and verified 2026-09-15 in the `coder/mq-issue-fix` working tree; durable quarantine, three-attempt retry and audited replay. F-03 remains open; [evidence and limits](../kafka-quarantine-f02.md).
+- **F-02 poison Kafka record stall**: verified 2026-09-15, committed at `863d63f`; durable quarantine, three-attempt retry and audited replay. [Evidence and limits](../kafka-quarantine-f02.md).
+- **F-03 oversized/coerced event integers**: implemented and verified 2026-09-16 in the `coder/corrupt-projection` working tree; exact types/ranges before writes, durable quarantine and valid same-ID recovery. [Evidence and limits](../balance-projection-f03.md).
 
 ## Superseded evidence
 
-Gates through `5ffb0d2` are superseded by the F-02 working-tree gate in [state](state.md); linked documents above retain their counts. The last JaCoCo (97.2% lines / 100% branches) and broader all-class PIT (94.5%) measurements were taken at `e6472f7`/`6ba729d` and are not part of the pom gate ([2026-09-14 audit](../qa-audit-2026-09-14.md)). Local load figures exclude HTTP, Redis and Kafka and set no capacity target ([build evidence](../build-evidence.md#local-load-measurement)). Raw logs under `/private/tmp` and `target/` reports are ephemeral.
+Gates through F-02 (`863d63f`) are superseded by the F-03 working-tree gate in [state](state.md); linked documents above retain their counts. The last JaCoCo (97.2% lines / 100% branches) and broader all-class PIT (94.5%) measurements were taken at `e6472f7`/`6ba729d` and are not part of the pom gate ([2026-09-14 audit](../qa-audit-2026-09-14.md)). Local load figures exclude HTTP, Redis and Kafka and set no capacity target ([build evidence](../build-evidence.md#local-load-measurement)). Raw logs under `/private/tmp` and `target/` reports are ephemeral.
 
 ## Environment notes worth keeping
 
