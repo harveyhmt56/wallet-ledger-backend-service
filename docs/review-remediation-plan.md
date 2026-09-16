@@ -6,7 +6,7 @@ Original reviewed commit: `4a1a954a844e951e74531303e855574551d6e14f`
 
 Original branch: `codex/implement-wallet-ledger`
 
-Reference report: [review-by-harvey-with-claude.md](/Users/harvey/Projects/wallet_ledger_backend_service/docs/review-by-harvey-with-claude.md)
+Reference report: [review-by-harvey-with-claude.md](review-by-harvey-with-claude.md)
 
 ## Second-pass fact check — 2026-09-10
 
@@ -116,7 +116,7 @@ Spring categorizes integrity failures as nontransient; that does not determine w
 
 ### R1 — P1: posting cost grows quadratically with wallet history
 
-Evidence: [V1__ledger.sql:140](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/resources/db/migration/V1__ledger.sql:140), [V1__ledger.sql:146](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/resources/db/migration/V1__ledger.sql:146).
+Evidence: [V1__ledger.sql:140](../src/main/resources/db/migration/V1__ledger.sql#L140), [V1__ledger.sql:146](../src/main/resources/db/migration/V1__ledger.sql#L146).
 
 For every historical player entry, the trigger sums its historical prefix. It runs for both the wallet update and the new player entry. Wallet locks and database connections remain occupied while this deferred work executes.
 
@@ -135,7 +135,7 @@ The PostgreSQL 17.6 backend disables the statement timeout in `finish_xact_comma
 
 ### R2 — P2: temporary-table shadowing bypasses a database integrity guard
 
-Evidence: unqualified relation references in [V1__ledger.sql:103](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/resources/db/migration/V1__ledger.sql:103) and [V1__ledger.sql:135](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/resources/db/migration/V1__ledger.sql:135); role setup in [01-roles.sql:6](/Users/harvey/Projects/wallet_ledger_backend_service/docker/postgres/01-roles.sql:6).
+Evidence: unqualified relation references in [V1__ledger.sql:103](../src/main/resources/db/migration/V1__ledger.sql#L103) and [V1__ledger.sql:135](../src/main/resources/db/migration/V1__ledger.sql#L135); role setup in [01-roles.sql:6](../docker/postgres/01-roles.sql#L6).
 
 **Reproduced using arbitrary SQL as `wallet_app`; no HTTP exploit was identified.** Temporary tables named `wallet` and `ledger_entry` were created in a fresh runtime-role connection. Their copied values were changed, followed by a balance-only update to `public.wallet`. The trigger validated the temporary copies and allowed the persistent update to commit: wallet balance **1101**, permanent ledger sum **1001**.
 
@@ -143,28 +143,28 @@ The default database TEMP privilege remains available despite revoking CREATE on
 
 ### R3 — P2: transfer receipts disclose another player's balance
 
-Evidence: [WalletService.java:126](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/java/com/example/walletledger/wallet/application/WalletService.java:126) adds `recipientBalanceAfter`, and the player transfer endpoint returns it. Direct reads of another player's balance are forbidden by [WalletController.java:105](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/java/com/example/walletledger/wallet/api/WalletController.java:105).
+Evidence: [WalletService.java:126](../src/main/java/com/example/walletledger/wallet/application/WalletService.java#L126) adds `recipientBalanceAfter`, and the player transfer endpoint returns it. Direct reads of another player's balance are forbidden by [WalletController.java:105](../src/main/java/com/example/walletledger/wallet/api/WalletController.java#L105).
 
-**Conclusive static data flow, not a live write probe:** a sender can learn the recipient's complete balance by making a small transfer. Removing the field only from new receipts is insufficient: [CommandExecutor.java:87](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/java/com/example/walletledger/idempotency/CommandExecutor.java:87) replays historical stored JSON.
+**Conclusive static data flow, not a live write probe:** a sender can learn the recipient's complete balance by making a small transfer. Removing the field only from new receipts is insufficient: [CommandExecutor.java:87](../src/main/java/com/example/walletledger/idempotency/CommandExecutor.java#L87) replays historical stored JSON.
 
 Use a caller-safe transfer response projection for both fresh and stored results. Return the sender's balance and recipient identity, but not the recipient's funds. Do not rewrite immutable journals. Document the intentional removal of this sensitive response field. [OWASP property-level authorization](https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/).
 
 ### R4 — P1 production configuration gate: Kafka topic durability
 
-Evidence: [MessagingConfiguration.java:39](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/java/com/example/walletledger/messaging/kafka/MessagingConfiguration.java:39) creates the topic with replication factor 1 outside any local-only restriction. `acks=all` can therefore acknowledge a single copy. Broker storage loss can lose an acknowledged event whose outbox row is already marked delivered.
+Evidence: [MessagingConfiguration.java:39](../src/main/java/com/example/walletledger/messaging/kafka/MessagingConfiguration.java#L39) creates the topic with replication factor 1 outside any local-only restriction. `acks=all` can therefore acknowledge a single copy. Broker storage loss can lose an acknowledged event whose outbox row is already marked delivered.
 
 This is a static durability risk, not a reproduced broker-loss test. Keep single-broker settings for local use, but provision and verify durable production topics. A typical production policy is replication 3, minimum in-sync replicas 2 and producer `acks=all`; validate the actual existing topic, not only the desired configuration. [Kafka 3.9 topic configuration](https://kafka.apache.org/39/configuration/topic-level-configs/).
 
 ### R5 — P2: notification recovery and validation are incomplete
 
-- [MessagingConfiguration.java:53](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/java/com/example/walletledger/messaging/kafka/MessagingConfiguration.java:53) configures unlimited retry. Permanent malformed-event failures can prevent later records from progressing. Add durable quarantine and recovery for permanent contract errors, while retaining retries for temporary database failures. Spring documents effectively infinite retries for this setting. [Spring Kafka error handling](https://docs.spring.io/spring-kafka/reference/3.3/kafka/annotation-error-handling.html).
-- [BalanceProjection.java:26](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/java/com/example/walletledger/messaging/kafka/BalanceProjection.java:26) narrows JSON integers to `long` without first checking representable range; schema version also permits coercion. An oversized integral JSON number can narrow to a valid positive value. Require exact types and range checks before conversion. This is a static/binary-verified consumer issue; it does not change authoritative wallet balances. [Java BigInteger conversion](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html#longValue()).
-- [OutboxRelay.java:60](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/java/com/example/walletledger/messaging/outbox/OutboxRelay.java:60) leases 100 events for 60 seconds but sends serially with potentially much longer cumulative waits. Another worker can reclaim the batch before the first finishes. Token fencing protects updates, but avoidable duplicate publication and inaccurate delivered metrics remain. Align ownership duration and work limits; retain the at-least-once contract.
-- Current Kafka tests use a real broker but call the projection manually. [MessagingIT.java:176](/Users/harvey/Projects/wallet_ledger_backend_service/src/test/java/com/example/walletledger/messaging/MessagingIT.java:176) does not exercise the real Spring listener's recovery or offset handling; the shared test configuration disables listener startup.
+- [MessagingConfiguration.java:53](../src/main/java/com/example/walletledger/messaging/kafka/MessagingConfiguration.java#L53) configures unlimited retry. Permanent malformed-event failures can prevent later records from progressing. Add durable quarantine and recovery for permanent contract errors, while retaining retries for temporary database failures. Spring documents effectively infinite retries for this setting. [Spring Kafka error handling](https://docs.spring.io/spring-kafka/reference/3.3/kafka/annotation-error-handling.html).
+- [BalanceProjection.java:26](../src/main/java/com/example/walletledger/messaging/kafka/BalanceProjection.java#L26) narrows JSON integers to `long` without first checking representable range; schema version also permits coercion. An oversized integral JSON number can narrow to a valid positive value. Require exact types and range checks before conversion. This is a static/binary-verified consumer issue; it does not change authoritative wallet balances. [Java BigInteger conversion](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html#longValue()).
+- [OutboxRelay.java:60](../src/main/java/com/example/walletledger/messaging/outbox/OutboxRelay.java#L60) leases 100 events for 60 seconds but sends serially with potentially much longer cumulative waits. Another worker can reclaim the batch before the first finishes. Token fencing protects updates, but avoidable duplicate publication and inaccurate delivered metrics remain. Align ownership duration and work limits; retain the at-least-once contract.
+- Current Kafka tests use a real broker but call the projection manually. [MessagingIT.java:176](../src/test/java/com/example/walletledger/messaging/MessagingIT.java#L176) does not exercise the real Spring listener's recovery or offset handling; the shared test configuration disables listener startup.
 
 ### R6 — P2: error classification and the HTTP security boundary need stronger evidence
 
-Evidence: [ApiProblems.java:30](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/java/com/example/walletledger/configuration/ApiProblems.java:30), [HttpApiIT.java:98](/Users/harvey/Projects/wallet_ledger_backend_service/src/test/java/com/example/walletledger/wallet/HttpApiIT.java:98), [JwtSecurityTest.java:31](/Users/harvey/Projects/wallet_ledger_backend_service/src/test/java/com/example/walletledger/configuration/JwtSecurityTest.java:31).
+Evidence: [ApiProblems.java:30](../src/main/java/com/example/walletledger/configuration/ApiProblems.java#L30), [HttpApiIT.java:98](../src/test/java/com/example/walletledger/wallet/HttpApiIT.java#L98), [JwtSecurityTest.java:31](../src/test/java/com/example/walletledger/configuration/JwtSecurityTest.java#L31).
 
 The database handler currently converts even invariant and SQL programming failures into a retryable outage, without useful failure logging. The role tests omit several money/claim endpoints. The JWT test uses a fake decoder and a synthetic probe; it does not prove actual signature, issuer, expiry or audience checks.
 
@@ -183,7 +183,7 @@ Affected areas: new Flyway migration(s), database safeguard tests, long-history 
 3. Replace full-history posting checks with indexed predecessor and final-tail validation. For each new player entry, verify ownership, required metadata, sequence-1 zero base, predecessor existence and `previous balance + signed amount = balance_after`, using numeric-safe arithmetic.
 4. Retain a wallet insert/update guard: the final current wallet balance and sequence must match its final ledger tail; an empty wallet must be zero/zero. Validate every new entry and support multiple valid postings to the same wallet in one transaction. Do not compare intermediate deferred `NEW` wallet images against the final tail.
 5. Preserve balanced-journal, unique sequence and immutable-history protections. Qualify all integrity-function references and harden name resolution.
-6. Keep a separate full audit for operational use. The existing [reconciliation method](/Users/harvey/Projects/wallet_ledger_backend_service/src/main/java/com/example/walletledger/wallet/application/WalletService.java:264) is only an aggregate balance comparison; extend it or add a bounded maintenance audit that also checks running balances, sequence continuity, ownership, journals and inverse refunds. Document how it is invoked/scheduled and alerts on mismatches.
+6. Keep a separate full audit for operational use. The existing [reconciliation method](../src/main/java/com/example/walletledger/wallet/application/WalletService.java#L264) is only an aggregate balance comparison; extend it or add a bounded maintenance audit that also checks running balances, sequence continuity, ownership, journals and inverse refunds. Document how it is invoked/scheduled and alerts on mismatches.
 7. Verify real commit/transaction timeout behaviour with PostgreSQL/JDBC fault injection. Consider PostgreSQL 17 `transaction_timeout` as a tested safeguard; do not substitute an increased timeout for the query fix. Retain same-key recovery for uncertain commit results.
 
 Acceptance evidence:

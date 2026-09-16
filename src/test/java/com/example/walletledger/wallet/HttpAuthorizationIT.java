@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -199,6 +200,20 @@ class HttpAuthorizationIT extends PostgresIntegrationTest {
                 .query(Integer.class)
                 .single())
         .isEqualTo(expectedStatus);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @EnumSource(Caller.class)
+  void healthComponentDetailsAreVisibleOnlyToAdministrators(Caller caller) throws Exception {
+    Fixture fixture = fixture();
+    JsonNode health = perform(get("/actuator/health"), fixture, caller, 200);
+    assertThat(health.path("status").asText()).isEqualTo("UP");
+    // The public probe reports liveness only; dependency inventory is administrator information.
+    if (caller == Caller.ADMIN) {
+      assertThat(health.path("components").path("db").path("status").asText()).isEqualTo("UP");
+    } else {
+      assertThat(health.has("components")).as("components for %s", caller).isFalse();
+    }
   }
 
   private void assertSuccessfulOperation(

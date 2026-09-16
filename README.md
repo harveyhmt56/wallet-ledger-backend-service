@@ -119,3 +119,7 @@ The [dated QA report](docs/qa-audit-2026-09-16.md) records past results and rema
 - **Known operational gaps:** database errors can receive misleading 503 retry guidance, balance reads can return 500 during an outage, readiness can remain UP with PostgreSQL down, and some metrics appear only after first use. End-to-end database request deadlines also need hardening.
 
 **Production readiness is not established.** Compose provides a local environment; deployment still needs JWT identity integration, secrets, controlled migrations, backups/restore drills and high availability. See [open findings and improvements](docs/memory/state.md#open-findings) and the [migration runbook](docs/ledger-integrity-v4.md#populated-upgrades-and-operational-audit).
+
+## License
+
+[MIT](LICENSE).
