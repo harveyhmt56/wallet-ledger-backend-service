@@ -4,7 +4,7 @@ Checked 2026-09-17 against `a3b7f9d`; [index](../../MEMORY.md). Fresh results an
 
 ## Commands
 
-Run from the repository root with Java 21 (`JAVA_HOME=$(/usr/libexec/java_home -v21)` on this machine; nothing in the build enforces it and the unit suite passes silently on JDK 24); integration/mutation gates require Docker and dependency images. See [README setup](../../README.md#how-to-run-setup-database-and-tests) and [pom.xml](../../pom.xml).
+Run from the repository root with Java 21 (`JAVA_HOME=$(/usr/libexec/java_home -v21)` on this machine; nothing in the build enforces it and the unit suite passes silently on JDK 24); integration/mutation gates require Docker and dependency images. See [README tests](../../README.md#run-tests), [development reference](../development.md) and [pom.xml](../../pom.xml).
 
 | Purpose | Command / output |
 | --- | --- |
