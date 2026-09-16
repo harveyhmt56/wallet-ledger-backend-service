@@ -1,6 +1,6 @@
 # F-03: exact balance event integers
 
-Implemented on `coder/corrupt-projection` from clean baseline `863d63f` (F-02 committed). Verified 2026-09-16 with Java 21.0.8, Spring Boot 3.5.16 and disposable Testcontainers PostgreSQL 17.6 / Kafka 3.9.1. Existing F-02 work is preserved; no migration or dependency change is needed.
+Implemented on `coder/corrupt-projection` from clean baseline `863d63f` (F-02 committed) and merged as `a3b7f9d`; re-verified black-box the same day with 13 hostile events ([re-audit](qa-audit-2026-09-16.md)). Verified 2026-09-16 with Java 21.0.8, Spring Boot 3.5.16 and disposable Testcontainers PostgreSQL 17.6 / Kafka 3.9.1. Existing F-02 work is preserved; no migration or dependency change is needed.
 
 ## Behavior and boundary
 
