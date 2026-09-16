@@ -21,6 +21,7 @@ Dated, superseded facts; nothing here needs re-running. Current facts live in [s
 | 2026-09-16 | `a3b7f9d` | **Step 4 validation slice, F-03**: exact event integer/long checks before writes; 79 parser and 3 real-listener regressions; full gate and expanded PIT pass | [F-03 evidence](../balance-projection-f03.md) |
 | 2026-09-16 | — | Second full audit at `a3b7f9d` (nothing committed): gate with JaCoCo, whole-service PIT, 484 black-box checks in 22 scenarios; F-03 closure verified with 13 hostile events; the other four findings reproduced and given project ids Review F4, F-12, F-13, F-14 | [summary](../qa-audit-2026-09-16.md), [report](https://claude.ai/artifact/94jezPXrjVvVzUNHijyj7A) |
 | 2026-09-13 → 09-17 | `f2a7e07` · `9b9ccd9` · `-v4` | Memory maintenance: split into requirements / state / implementation / verification / history (`-v2`), re-baselined on `5ffb0d2` (`-v3`) and on `a3b7f9d` with the re-audit recorded in-tree (`orchestrate/memory-mgt-v4`); superseded gate numbers and the archived plan removed from active notes | — |
+| 2026-09-17 | — | README focused on quickstart/tests, ledger trade-offs, concurrency/idempotency, debit-race testing and distributed limits; API/development references split out. Source/link/shell/Compose/diff checks only; application tests not rerun | [README](../../README.md), [API](../api.md), [development](../development.md) |
 
 ## Closed findings
 

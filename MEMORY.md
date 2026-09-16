@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Application baseline: `main` = `a3b7f9d` (F-03 committed). Checked 2026-09-17; documentation-only changes since live on `orchestrate/memory-mgt-v4`. This is a retrieval index and source-backed snapshot, not a backlog to execute.
+Application implementation baseline: `a3b7f9d` (F-03 committed); `main` head `11ea104` adds memory documentation only. Checked 2026-09-17; the README refresh on `coder/readme-optimize` is also documentation only. This is a retrieval index and source-backed snapshot, not a backlog to execute.
 
 ## Project goal and must-fulfil requirements
 
@@ -30,7 +30,7 @@ Required stack: Java 21, Spring Boot 3.5.16, PostgreSQL, Redis, Kafka, Flyway, D
 | Where behavior lives: posting, locks, idempotency, schema, API, security, messaging | [implementation](docs/memory/implementation.md) |
 | Commands, test navigation, evidence rules and limits | [verification](docs/memory/verification.md) |
 | Compact dated timeline of past reviews, fixes and superseded evidence | [history](docs/memory/history.md) |
-| Setup, credentials, endpoints, demo, environment variables | [README](README.md) |
+| Quickstart and design / credentials and endpoints / host setup and configuration | [README](README.md) / [API](docs/api.md) / [development](docs/development.md) |
 
 Canonical detail documents: [remediation plan](docs/review-remediation-plan.md) (findings, steps 1–6, acceptance criteria), [V4 evidence](docs/ledger-integrity-v4.md), [step 2 evidence](docs/api-security-step2.md), [QA audit 2026-09-14](docs/qa-audit-2026-09-14.md), [F-01](docs/database-outage-f01.md) / [F-02](docs/kafka-quarantine-f02.md) / [F-03](docs/balance-projection-f03.md) evidence, [QA re-audit 2026-09-16](docs/qa-audit-2026-09-16.md).
 

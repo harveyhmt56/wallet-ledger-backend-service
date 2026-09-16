@@ -1,6 +1,6 @@
 # Project state
 
-Fresh note: replace facts here whenever the baseline moves. Checked 2026-09-17. Application baseline `main` = `a3b7f9d` (`qa/full-analyze-tests` is tree-identical); everything since is documentation only, on `orchestrate/memory-mgt-v4`. [Index](../../MEMORY.md) · [history](history.md).
+Fresh note: replace facts here whenever the baseline moves. Checked 2026-09-17. Application implementation baseline `a3b7f9d` (`qa/full-analyze-tests` is tree-identical); `main` head `11ea104` adds memory documentation only. The README refresh on `coder/readme-optimize` is also documentation only. [Index](../../MEMORY.md) · [history](history.md).
 
 ## Implemented
 
@@ -24,6 +24,8 @@ Fresh note: replace facts here whenever the baseline moves. Checked 2026-09-17. 
 
 Source: [2026-09-16 re-audit](../qa-audit-2026-09-16.md). Earlier gates are superseded; see [history](history.md#superseded-evidence).
 
+Documentation check, 2026-09-17: [README](../../README.md) shortened around setup/tests, design, concurrency and limits; details moved to [API](../api.md) and [development](../development.md). Commands and behavior cross-checked with source/tests and official docs; relative links/anchors, shell syntax, Compose configuration and diff checks pass. No application tests or stack run for this documentation-only change; historical application evidence above is unchanged.
+
 ## Open findings
 
 | Id | Finding | Step |
@@ -45,10 +47,10 @@ Steps 3–6 of the [ordered plan](../review-remediation-plan.md#ordered-implemen
 3. **Errors and audit fields (F-01 slice done).** SQLSTATE-based classification in `ApiProblems` (08/57P0x → 503 retry; 22 → 400 naming the field; 23 → 409 for known constraints, else 500) applied to both `DataAccessException` and every `TransactionException` — closes Review F4 and F-12 together; field-level 400 bodies; keep `Allow`; `originalTransactionId` and transfer counterparty in history; real rate-limit retry guidance.
 4. **Messaging (F-02 and F-03 done).** Wire `ledger.outbox.topic`; two-relay lease test; production replication and minimum ISR; deploy the documented quarantine alerts/operator privileges.
 5. **Promotion contention.** Unlocked early rejection for already-claimed or exhausted campaigns; keep the locked authoritative check for winners.
-6. **Production evidence.** Readiness group includes `db` (F-13); eager counter registration (F-14); controlled V4 migration step; JDBC socket timeout; enforce Java 21 in the build (unit tests pass silently on JDK 24); container patch review (PostgreSQL 17.6 is behind 17.11); JaCoCo threshold in the pom; backup/restore and recovery drills; confirmed hosted CI; README refresh.
+6. **Production evidence.** Readiness group includes `db` (F-13); eager counter registration (F-14); controlled V4 migration step; JDBC socket timeout; enforce Java 21 in the build (unit tests pass silently on JDK 24); container patch review (PostgreSQL 17.6 is behind 17.11); JaCoCo threshold in the pom; backup/restore and recovery drills; confirmed hosted CI. README refresh completed 2026-09-17.
 
 Verdict: every mandatory and supporting feature implemented and verified; production readiness is **not** established. This queue does not authorize implementation; the user's current request does.
 
 ## Next action
 
-No application change is in progress; the code is exactly `a3b7f9d`. The re-audit's ordered test additions are in [QA worth adding](../qa-audit-2026-09-16.md#qa-worth-adding-in-order); the first item (SQLSTATE classification with its `ApiProblemsTest` matrix, NUL-byte and read-during-outage cases) closes two findings at once. This note does not authorize that slice.
+README refresh is complete; no application change is in progress and application code remains at `a3b7f9d`. The re-audit's ordered test additions are in [QA worth adding](../qa-audit-2026-09-16.md#qa-worth-adding-in-order); the first item (SQLSTATE classification with its `ApiProblemsTest` matrix, NUL-byte and read-during-outage cases) closes two findings at once. This note does not authorize that slice.

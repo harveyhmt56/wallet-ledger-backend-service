@@ -1,120 +1,121 @@
 # Wallet Ledger Service
 
-A Java 21 / Spring Boot **3.5.16** service for whole-unit game currency. PostgreSQL owns balances, immutable double-entry journals, idempotency, reward claims and the outbox. Redis limits requests; Kafka carries balance-change notifications.
+A **Java 21 / Spring Boot 3.5.16** backend for whole-unit game currency. Supports credits, debits, transfers, full refunds, balance/history queries, and daily, mission and limited-promotion rewards.
 
-## How to run, setup, database and tests
+PostgreSQL owns money and its audit trail. Redis rate-limits requests; Kafka distributes balance-change events.
 
-Prerequisites: Docker with Compose, Java 21 for host builds, and Python 3 for the demo. Maven 3.9.11 is downloaded by the checked-in wrapper with checksum verification. Container images have explicit versions: PostgreSQL 17.6, Redis 7.4.5, Kafka 3.9.1, and Temurin 21.0.8+9.
+[Run locally](#run-locally) · [Run tests](#run-tests) · [Design](#design-decisions-and-trade-offs) · [Concurrency & idempotency](#concurrency--idempotency) · [Testing](#testing-approach) · [Limitations](#assumptions--limitations)
+
+## Run locally
+
+### 1. Start the application and database
+
+Install **Docker with Compose** and **curl**, start Docker, then run these commands from the repository root. Java and Maven run inside the build container; no host JDK is needed for this path.
 
 ```sh
 docker compose up --build -d
-curl --fail http://localhost:8080/actuator/health
+curl --fail --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
+  http://localhost:8080/actuator/health
+```
+
+Wait for a response containing `"status":"UP"`. The first build downloads dependencies and images. The [Compose configuration](compose.yaml) starts PostgreSQL, Redis, Kafka and the application; PostgreSQL creates the database and roles, and Flyway applies migrations automatically. No manual SQL setup is needed on a fresh volume.
+
+The API is at `http://localhost:8080`. Published ports are localhost-only: `8080` (API), `5432` (PostgreSQL), `6379` (Redis), `9092` (Kafka). Database: `wallet_ledger`, application login: `wallet_app` / `wallet_app_local`.
+
+### 2. Try the complete flow
+
+With **Python 3** installed:
+
+```sh
 python3 scripts/demo.py
 ```
 
-Compose binds published ports to localhost. The demo provisions Alice and Bob, credits and spends funds, transfers, claims daily/mission/promotion rewards, reverses a purchase, and reads history and reconciliation. Its stable idempotency keys make reruns safe. A first run on an empty database gives Alice 215 and Bob 20 units; daily rewards can change this on later dates.
+The demo creates Alice and Bob, exercises money/reward operations, then reads balances, history and reconciliation. On an empty database it ends with **Alice: 215, Bob: 20**. Reruns reuse idempotency keys; a later UTC date can add another daily reward.
 
-| Local username | Password | Permission |
-| --- | --- | --- |
-| `service` | `service-password` | Provision, credit/debit, completion evidence, cancellation, authorized reads |
-| `admin` | `admin-password` | Money operations, cancellation, reconciliation and metrics |
-| `10000000-0000-0000-0000-000000000001` | `alice-password` | Alice's wallet, transfers and reward claims |
-| `10000000-0000-0000-0000-000000000002` | `bob-password` | Bob's wallet, transfers and reward claims |
-
-These fixed credentials exist only in the `local` profile. Other profiles use OAuth2 JWTs and refuse startup without a nonblank issuer and at least one nonblank audience: configure `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` and `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES`. Signed `roles` claims contain `PLAYER`, `SERVICE`, or `ADMIN`; player `sub` is the provisioned player UUID. Boot configures the decoder; optionally set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI` to avoid issuer discovery. Tests use a local JWK fixture and signed tokens through real HTTP/controllers; no live identity provider is contacted. Production provider integration remains deployment-specific. See [Spring Security JWT configuration](https://docs.spring.io/spring-security/reference/6.5/servlet/oauth2/resource-server/jwt.html).
-
-Host development:
+The `local` profile uses demo Basic authentication. For example, after the demo:
 
 ```sh
-docker compose up -d postgres redis kafka
-# On macOS, select Java 21 if necessary:
-export JAVA_HOME=$(/usr/libexec/java_home -v21)
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+curl --fail -u service:service-password \
+  http://localhost:8080/v1/wallets/10000000-0000-0000-0000-000000000001/balance
 ```
 
-Configuration uses `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `MIGRATION_USERNAME`, `MIGRATION_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, and `KAFKA_BOOTSTRAP_SERVERS`. Local defaults are in `application-local.yml`. Provision separate database roles outside Compose for other environments. Flyway connects as `wallet_migration`; request processing uses `wallet_app`, which cannot rewrite or truncate journal history or create permanent objects in the public schema; database TEMP privilege remains available. `V1` creates the ledger, `V2` rewards, and `V3` the example consumer projection. `V4` audits existing data, replaces historical-prefix validation with indexed predecessor/tail checks, and hardens integrity functions. Plan a maintenance window for its write-blocking preflight; audit findings abort the upgrade. Startup Flyway is enabled by default. Production needs an enforced separate migration/validation step with writers quiesced before disabling startup Flyway on serving instances; the repository does not implement that deployment pipeline. See [V4 operation and evidence](docs/ledger-integrity-v4.md). Existing permanent databases must receive new versioned migrations, never edited applied migrations.
+See the [API reference](docs/api.md) for write examples, credentials and endpoints, or [development setup](docs/development.md) to run Spring Boot from your IDE/host.
+
+### 3. Stop or troubleshoot
 
 ```sh
-./mvnw test                         # fast unit and HTTP security adapter tests
-./mvnw spotless:apply               # format Java
-./mvnw clean verify                 # unit + real infrastructure tests + formatting + executable JAR
-./mvnw -Pmutation verify            # complete gates and PIT domain mutation testing
-./mvnw -Dtest=LoadMeasurement test   # explicit local measurement; target/load-report.json
-./mvnw -Dtest=LedgerHistoryMeasurement test # warmed 1k/5k/10k/20k histories; target/ledger-history-v4.json
+docker compose down              # stops the stack; keeps database and Kafka volumes
 ```
 
-Tests create disposable containers and do not use the Compose database. Keep Docker running and permit its socket access. First builds need Maven Central and container registry access. Reports are in `target/surefire-reports`, `target/failsafe-reports`, and `target/pit-reports/index.html`. The executable artifact is `target/wallet-ledger-service-0.0.1-SNAPSHOT.jar`. If startup fails, inspect `docker compose ps` and `docker compose logs app`; check port conflicts, container health, and database role setup. `docker compose down` stops this stack and retains its data volumes.
+If startup fails, check `docker compose ps` and `docker compose logs --tail=100 app postgres redis kafka` for unhealthy dependencies or port conflicts. The curl command waits for HTTP health; Compose does not check application readiness.
 
-Every mutation requires `Idempotency-Key` (1–200 characters). Monetary bodies use a positive integer `amount`, nonblank `reason` (max 500), `source` (max 100), and `reference` (max 200). Fractions, string-coerced numbers, zero, negative and overflowing amounts are rejected. Example after provisioning Alice:
+## Run tests
+
+Install **JDK 21** and set `JAVA_HOME` to it. The checked-in Maven wrapper downloads Maven 3.9.11; a separate Maven installation is unnecessary. On macOS, select Java with `export JAVA_HOME=$(/usr/libexec/java_home -v21)`.
 
 ```sh
-curl --fail-with-body -u service:service-password \
-  -H 'Content-Type: application/json' -H 'Idempotency-Key: example-credit-1' \
-  -d '{"amount":100,"reason":"Mission completed","source":"mission-server","reference":"mission-42"}' \
-  http://localhost:8080/v1/wallets/10000000-0000-0000-0000-000000000001/credits
+./mvnw --version                 # confirm Java 21
+./mvnw test                      # fast unit/HTTP adapter tests; no Docker needed
+./mvnw clean verify              # unit + integration tests, format check, executable JAR
+./mvnw clean verify -Pmutation   # same checks plus PIT mutation testing (CI command)
 ```
 
-| API | Body / result |
-| --- | --- |
-| `POST /v1/players` | `playerId`; zero-balance wallet |
-| `POST /v1/wallets/{playerId}/credits` or `/debits` | Monetary body; immutable receipt |
-| `GET /v1/wallets/{playerId}/balance` | Current PostgreSQL balance and sequence |
-| `GET /v1/wallets/{playerId}/transactions?limit=20&cursor=42` | `items`, `nextCursor`; limit 1–100 |
-| `POST /v1/transfers` | Monetary body plus `recipientId`; sender from authentication, response contains only sender funds |
-| `POST /v1/transactions/{transactionId}/refunds` | `reason`, `source`, `reference`; full reversal |
-| `POST /v1/daily-login/claims` | No business payload; UTC daily reward |
-| `POST /internal/v1/action-completions` | `playerId`, `rewardId`, `source`, `reference`; trusted service only |
-| `POST /v1/rewards/{rewardId}/claims` | `completionReference` returned by the trusted completion endpoint |
-| `POST /v1/promotions/{promotionId}/claims` | No business payload; limited reward |
-| `GET /v1/admin/reconciliation` | Admin-only balance/ledger comparison |
+**Keep Docker running for `verify`.** Testcontainers starts disposable PostgreSQL, Redis and Kafka containers; the Compose stack does not need to be running, and its database is not used by tests. First runs require network access to download dependencies/images.
 
-The seeded mission ID is `20000000-0000-0000-0000-000000000001` (100 units, `mission-v1`). The seeded promotion is `30000000-0000-0000-0000-000000000001` (25 units, 100 distinct players, `promotion-v1`). Definitions are seeded for the assignment; there is no policy-management API.
-
-Mutations return HTTP 200 receipts. Errors use `application/problem+json` with a stable `code`: 400 invalid input, 401/403 authentication/authorization, 404 missing resource, 409 business conflict, and 429 request quota. Known connection failures when starting a transaction return `503 DEPENDENCY_UNAVAILABLE`, `Retry-After: 1`, and same-key retry guidance. Other transaction exceptions return sanitized `500 INTERNAL_ERROR` without a retry header; preserve the original idempotency key when recovering an uncertain outcome. Every handled `DataAccessException` still maps to 503, including nontransient failures; that classification remains a known gap. See [outage recovery evidence and classification limits](docs/database-outage-f01.md). Replays include the original `balanceAfter`; use the balance endpoint for current funds. Transfer responses intentionally omit `recipientBalanceAfter` for fresh results and all replays, including receipts stored before this fix. They retain transaction identity, sender balance/sequence and recipient identity. Stored receipts and immutable journals are unchanged; see [privacy and authorization evidence](docs/api-security-step2.md).
+Results: `target/surefire-reports` (unit), `target/failsafe-reports` (integration), `target/pit-reports/index.html` (mutation). See [developer commands](docs/development.md#tests-formatting-and-reports) for formatting and optional measurements.
 
 ## Design decisions and trade-offs
 
-One modular application and one PostgreSQL database keep money movement atomic. `WalletService` is the shared posting boundary; reward services call it within the same transaction. Pure domain policies use checked arithmetic and injected time. JDBC makes SQL and lock behavior inspectable; it costs explicit mapping code.
+**Use an immutable double-entry ledger so every balance change explains where the money came from or went.** Each journal has two equal, opposite entries: player/platform for credits and debits, or sender/recipient for transfers. Refunds append inverse entries linked to the original transaction; they never rewrite history.
 
-Each journal has exactly two distinct accounts and equal opposite entries. Credits pair a player with platform issuance; debits pair a player with platform purchases; transfers pair two players. Refunds append inverse entries linked to an unchanged original. Deferred database triggers reject incomplete/unbalanced journals, mismatched player balances, broken sequences, and incorrect running balances. Ledger rows also have update/delete/truncate rejection triggers. Platform totals are derived, avoiding a global mutable platform-wallet lock. V4 validates new entries against indexed predecessors and the final wallet tail. Its separate full SQL audit checks history in a consistent snapshot; [run and schedule the bounded maintenance audit](docs/ledger-integrity-v4.md#populated-upgrades-and-operational-audit) and alert on any nonzero exit.
+| Decision | Benefit | Trade-off |
+| --- | --- | --- |
+| Ledger plus a stored wallet balance | Auditable history and fast balance reads | Extra storage and checks to keep both consistent |
+| One PostgreSQL transaction per command | Balance, journal, reward state, receipt and outbox commit together | The database is the availability and scaling boundary |
+| Row locks before checking funds | Conflicting debits cannot spend the same balance | Hot wallets and promotion rows serialize requests |
+| Transactional outbox to Kafka | A committed payment retains its event even if Kafka is down | Delivery is asynchronous; duplicates and reordering must be handled |
+| Spring JDBC with explicit SQL | Locking and transaction behavior are easy to inspect | More SQL and mapping code to maintain |
 
-Money posting inserts one outbox event per affected player. A relay leases pending rows using `SKIP LOCKED`, publishes outside the money transaction, and marks delivery only after broker acknowledgement. Expired leases recover interrupted workers. Duplicate or reordered publication is expected: the example consumer stores event-ID deduplication with its local projection and accepts only newer wallet sequences using the event's absolute balance. It does not sum out-of-order deltas. See [Kafka delivery semantics](https://kafka.apache.org/39/design/design/).
+[WalletService](src/main/java/com/example/walletledger/wallet/application/WalletService.java) handles all postings. Database constraints/triggers enforce balanced journals, wallet totals, sequences and running balances, and reject changes to existing history. Platform totals are derived, avoiding a shared platform-balance lock. Some posting rules remain in service code; see [database checks and limits](docs/ledger-integrity-v4.md#database-boundary).
 
-Invalid Kafka records enter PostgreSQL quarantine immediately; other listener failures get three delivery attempts before quarantine. The consumer advances past a failed record only after quarantine commits. V5 adds restricted quarantine and replay-audit tables; new quarantine rows and failed recovery writes emit metrics. See [F-02 recovery evidence, alerts and audited operator replay](docs/kafka-quarantine-f02.md). Numeric event fields must be exact JSON integers representable as Java `long` before any write (F-03, [evidence](docs/balance-projection-f03.md)); topic durability and relay lease improvements remain open.
+Balance reads use PostgreSQL. Redis only limits traffic and fails open on outage; it is not a source of funds. Kafka's consumer is an eventually consistent balance projection.
 
-Redis performs an atomic Lua counter with expiry. Its default limit is 120 authenticated requests per 60-second window, configured by `ledger.rate-limit.requests` and `ledger.rate-limit.window-seconds`. Redis failures fail open and increment `wallet.rate_limit.degraded`; PostgreSQL money protections remain authoritative. The atomic script approach follows [Redis scripting guarantees](https://redis.io/docs/latest/develop/programmability/eval-intro/).
+## Concurrency & idempotency
 
-Health probes are public; other Actuator endpoints require admin access. Logs carry a generated `correlationId`, also returned in `X-Correlation-ID`. Receipts and history carry transaction IDs. Metrics include command rejections/retries and outbox pending count, oldest age, delivery and failures. Reconciliation runs in a repeatable-read transaction.
+**Concurrency:** commands use PostgreSQL `READ COMMITTED` and `SELECT … FOR UPDATE` before checking funds. Transfers lock both wallets in a consistent UUID order; locks also protect reward capacity and claim/refund identities. This works across instances sharing the database. See [PostgreSQL row locks](https://www.postgresql.org/docs/17/explicit-locking.html#LOCKING-ROWS).
 
-## Concurrency & Idempotency
+**Idempotency:** every write requires an `Idempotency-Key` (1–200 nonblank characters). [CommandExecutor](src/main/java/com/example/walletledger/idempotency/CommandExecutor.java) reserves `(authenticated actor, key)` in PostgreSQL and fingerprints the operation, target and canonical request content.
 
-The outer command transaction reserves `(authenticated actor, key)`, checks a SHA-256 fingerprint of operation/target and recursively sorted JSON business content, executes the action, and stores its response before committing. Concurrent key copies coordinate through PostgreSQL uniqueness. Changed content returns `IDEMPOTENCY_KEY_REUSED`. A savepoint rolls back rejected business work while retaining its completed rejection response. Nested wallet/reward transactions also use savepoints, protecting direct service calls. Infrastructure failures roll back the reservation and all business writes. Selected transient database failures allow at most three attempts (two retries), each with a fresh transaction.
+- Same actor, key and content: return the stored result, including business rejections. Concurrent copies coordinate through a unique constraint.
+- Same actor/key with different content: return `409 IDEMPOTENCY_KEY_REUSED`.
+- Business rejection: a savepoint removes partial work, then the rejection is stored. A declined debit stays declined when replayed, even after adding funds.
+- Failure before commit: the reservation and business writes roll back together. Selected transient database errors get at most three attempts, each in a new transaction.
 
-Lock order is idempotency reservation, business state/reference lock, then wallets in ascending UUID byte/text order. Wallet locks serialize conflicting debits and transfers use the same ordering in both directions. Immutable completion/refund identities use transaction advisory locks. Reference uniqueness is `(operation, source, reference)` across wallets; source systems must issue globally unique references within that scope. Entitlement constraints independently enforce one daily claim per player/date, one claim per completion, one player per promotion, and one reversal per original.
+**After a timeout or lost response, retry with the same key.** A replay's `balanceAfter` is the original receipt value; query `/balance` for current funds. Use a new key for a new action, including a new day's daily claim. Business references must also be unique across wallets within `(operation, source, reference)`; claim and refund constraints prevent duplicate business actions with different keys.
 
-Connections use a five-second lock timeout and fifteen-second statement timeout. These and Spring's transaction timeout are not guaranteed deferred-commit deadlines. Real fault tests demonstrate PostgreSQL 17 `transaction_timeout` bounding deferred commit and same-key recovery; it is not globally enabled by V4. See [deadline evidence](docs/ledger-integrity-v4.md#observed-red--green). No network call runs inside money transactions. See [PostgreSQL explicit locks](https://www.postgresql.org/docs/17/explicit-locking.html), [deferred constraint triggers](https://www.postgresql.org/docs/17/sql-createtrigger.html), and [Spring nested transaction semantics](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/tx-propagation.html).
+The outbox relay publishes after commit and marks delivery after Kafka acknowledgement; a crash between those steps can resend an event. The consumer deduplicates event IDs and applies only newer wallet sequences using absolute balances. Delivery is **at least once**, with [quarantine and operator replay](docs/kafka-quarantine-f02.md) for failed records. See [Kafka delivery semantics](https://kafka.apache.org/39/design/design/).
 
 ## Testing approach
 
-Executable JUnit acceptance examples assert public API and database outcomes; Gherkin is not required by this repository. The original build notes report a red-green TDD process; the squashed implementation history cannot independently establish that sequence. Tests cover exact arithmetic, UTC streak boundaries, authorization, validation, lost-response replay, real HTTP requests to two application instances, 100 concurrent copies of one key, opposing transfers, concurrent refunds, stable cursor pages and ledger reconciliation.
+Tests check financial state as well as responses:
 
-The required debit race starts 100 independent operations of 10 against 500 and asserts exactly 50 successes, 50 rejections and balance zero. The quota race starts 500 players against 100 slots and checks exactly 100 distinct winners. Database tests explicitly hold a wallet lock, reject direct ledger corruption, and inject failures during outbox/claim persistence to prove atomic rollback. PostgreSQL is real; no H2 substitute is used. Kafka tests pause the real broker and replay delivery after a simulated acknowledgement/marking crash; Redis tests inspect the real counter TTL.
+- **Unit tests:** checked money arithmetic, reward/date policies, validation, authorization and adapters.
+- **Real infrastructure tests:** PostgreSQL transactions, constraints and locks; Redis expiry/failure behavior; Kafka delivery, recovery and quarantine. No H2 substitute for money guarantees.
+- **Fault and replay tests:** duplicate keys, lost responses, opposing transfers, concurrent refunds, limited rewards, persistence failures and rollback. PIT checks selected Java policies/adapters; targeted SQL mutations check database safeguards.
 
-`MoneyPressureHttpIT` repeats the debit race through two application contexts over real HTTP, checks 100 duplicate debit submissions and mixed credits/debits, then verifies every receipt, journal, balanced entry pair, outbox payload and history page. Replaying successes and rejections after funding must leave financial rows unchanged. `DatabaseSafeguardsIT` also holds an actual debit uncommitted, observes the competing command blocked by that PostgreSQL backend, then requires an insufficient-funds rejection after the first commits.
+The key debit race in [MoneyPressureHttpIT](src/test/java/com/example/walletledger/wallet/MoneyPressureHttpIT.java) starts with **500 units** and sends **100 distinct debits of 10** through two application instances over real HTTP. It requires exactly **50 successes, 50 insufficient-funds rejections and balance 0**, then checks receipts, ledger entries, outbox payloads and history. Replaying successes and rejections after adding funds must leave financial rows unchanged.
 
-PIT targets the money, daily reward and sequence-projection domain policies, transfer response projection, required JWT configuration, API problem advice and rate-limit adapters with 80% mutation and coverage gates. Reports must contain evaluated mutants; zero-mutant and invalid runs are failures. JVM mutation does not mutate PostgreSQL triggers, so `LedgerSqlMutationIT` also runs 12 targeted SQL mutations against real PostgreSQL acceptance examples. See [PIT's Maven configuration](https://pitest.org/quickstart/maven/). The [2026-09-14 QA audit](docs/qa-audit-2026-09-14.md) records the fresh 365-case gate, deliberate mutation checks, reproduced outage/event defects and production limits; the [2026-09-16 re-audit](docs/qa-audit-2026-09-16.md) records the 448-case gate with coverage, whole-service mutation score, black-box and chaos probes at the current commit and the remaining non-money findings. Earlier results remain in [build evidence](docs/build-evidence.md), [V4 evidence](docs/ledger-integrity-v4.md) and [API security evidence](docs/api-security-step2.md).
+[DatabaseSafeguardsIT](src/test/java/com/example/walletledger/wallet/DatabaseSafeguardsIT.java) makes the overlap deterministic: hold one debit uncommitted, observe the competing debit blocked by PostgreSQL, commit the first, and require the second to reject using the updated balance. Separate races cover 100 copies of one idempotency key and 500 players competing for 100 promotion slots.
+
+The [dated QA report](docs/qa-audit-2026-09-16.md) records past results and remaining findings; the commands above produce fresh evidence for your checkout.
 
 ## Assumptions & limitations
 
-- Core features, V4's database repair and step 2 privacy/authorization are implemented and verified locally; production readiness remains unestablished. [Remaining release gates](docs/review-remediation-plan.md#ordered-implementation-plan) include error clarity, messaging and deployment evidence.
-- History still omits refund-origin and transfer-counterparty fields. The [API security evidence](docs/api-security-step2.md) distinguishes route authorization denials from replayable business rejections and local JWT fixtures from production provider integration.
-- Service code enforces operation/account/sign and inverse-refund semantics. Generic commit triggers do not enforce all of those relationships; `refund_inverse` is an audit check. See [V4's database boundary](docs/ledger-integrity-v4.md#database-boundary).
-- One `COIN` currency in Java `long` / PostgreSQL `BIGINT`; maximum player balance is `Long.MAX_VALUE`.
-- The server's UTC date defines daily claims. Consecutive days grant `10 × streak day`; missed days reset the streak.
-- Trusted completion evidence determines eligibility and server definitions determine amounts. Clients cannot mint arbitrary currency.
-- Only full credit/debit reversals are supported. Transfer/partial reversals are excluded. Overdrawing reversals fail; reversals do not restore entitlements or promotion slots.
-- Idempotency, ledger and consumer deduplication records are retained for the project lifetime. Archival is future work.
-- One database owns all wallets. Hot wallets and campaign rows serialize writes. This design does not implement cross-database transfers or high availability.
-- The outbox relay permits at-least-once publication and reordering. Automatic topic creation currently requests replication 1 outside a local-only restriction, so `acks=all` can acknowledge a single copy; production replication/minimum ISR must be provisioned and verified. The example consumer is a balance snapshot projection, not an exactly-once delivery claim. Poison records need operator intervention; no dead-letter workflow is supplied.
-- Compose is a reproducible local environment. Production identity, secrets, backups, broker replication and deployment controls must be supplied by the deployment environment.
-- Boot 3.5.16 is retained as required. It is the final open-source release of the 3.5 line; see the [official release lifecycle notice](https://spring.io/blog/2026/06/25/spring-boot-3-5-16-available-now/).
+- **Currency and policy:** one whole-unit `COIN` currency using Java `long` / PostgreSQL `BIGINT`; player balances cannot be negative or exceed `Long.MAX_VALUE`. Daily claims use server UTC. Reward amounts and eligibility are server-controlled; seeded policies have no management API.
+- **Refund scope:** only full credit/debit reversals. No partial or transfer refunds; a reversal cannot overdraw a wallet and does not restore reward entitlements or promotion slots.
+- **Distributed deployment:** multiple app instances can share PostgreSQL. Cross-database/sharded transfers need a transfer protocol, recovery/compensation and reconciliation; they are not implemented. Database failover and recovery still need deployment testing.
+- **Event delivery:** consumers can lag; no end-to-end exactly-once guarantee. Topic creation currently requests replication factor 1, including outside local mode. Production needs broker replication/minimum ISR settings and stronger relay recovery evidence.
+- **Retention and audit:** ledger, idempotency and consumer deduplication records are retained indefinitely; archival is future work. History lacks refund-origin and transfer-counterparty fields.
+- **Known operational gaps:** database errors can receive misleading 503 retry guidance, balance reads can return 500 during an outage, readiness can remain UP with PostgreSQL down, and some metrics appear only after first use. End-to-end database request deadlines also need hardening.
+
+**Production readiness is not established.** Compose provides a local environment; deployment still needs JWT identity integration, secrets, controlled migrations, backups/restore drills and high availability. See [open findings and improvements](docs/memory/state.md#open-findings) and the [migration runbook](docs/ledger-integrity-v4.md#populated-upgrades-and-operational-audit).

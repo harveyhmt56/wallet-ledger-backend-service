@@ -49,7 +49,7 @@ Spring's [nested propagation documentation](https://docs.spring.io/spring-framew
 
 ## HTTP and reward boundaries
 
-- [README API table](../../README.md#how-to-run-setup-database-and-tests) owns route/body/demo details. Mutations return 200 on success and require a nonblank `Idempotency-Key` of at most 200 characters. Strict JSON rejects fractions, scalar coercion and unknown properties.
+- [API reference](../api.md) owns route/body/authentication details; [README](../../README.md#run-locally) owns the quickstart/demo. Mutations return 200 on success and require a nonblank `Idempotency-Key` of at most 200 characters. Strict JSON rejects fractions, scalar coercion and unknown properties.
 - SERVICE/ADMIN: provision, credit, debit, refund and authorized reads. PLAYER: own reads, transfer from authenticated subject, daily/reward/promotion claims. Completion evidence is SERVICE-only; reconciliation is ADMIN-only.
 - Local credentials are demo-only; nonlocal configuration uses JWT `roles` and subject. Nonlocal startup requires a nonblank issuer and nonempty, nonblank audiences. Boot still configures the decoder. Real HTTP tests verify signed tokens with a loopback JWK fixture; production provider integration remains external.
 - Daily state, trusted completion claims and promotion capacity commit with the credit; applied policy versions are stored. Promotion validates player existence/active status before locking the campaign, then checks campaign enabled/duplicate/exhaustion state. See [requirements](requirements.md) for policy scope.
