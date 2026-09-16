@@ -669,7 +669,7 @@
         "src/test/java/com/example/walletledger/wallet/RefundConcurrencyIT.java": "26b8c83c4af577f82bd489a9b30a28ac4321a12f1ff2aa94b3ab91d48c9f1825"
       },
       "focusedControl": {
-        "command": "JAVA_HOME=/Users/harvey/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.8/Contents/Home ./mvnw -B -ntp spotless:apply -DspotlessFiles=\".*(WalletLedgerIT|WalletRejectionsIT|RefundConcurrencyIT)\\.java\" test-compile failsafe:integration-test failsafe:verify -Dit.test=WalletLedgerIT,WalletRejectionsIT,RefundConcurrencyIT",
+        "command": "JAVA_HOME=<graalvm-jdk-21.0.8 home> ./mvnw -B -ntp spotless:apply -DspotlessFiles=\".*(WalletLedgerIT|WalletRejectionsIT|RefundConcurrencyIT)\\.java\" test-compile failsafe:integration-test failsafe:verify -Dit.test=WalletLedgerIT,WalletRejectionsIT,RefundConcurrencyIT",
         "cases": 38,
         "newCases": 30,
         "failures": 0,

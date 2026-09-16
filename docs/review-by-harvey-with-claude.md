@@ -1,7 +1,7 @@
 ---
 document_type: independent_code_review
 subject: wallet-ledger-service
-repository_path: /Users/harvey/Projects/wallet_ledger_backend_service
+repository_path: . (repository root)
 stack: Java 21, Spring Boot 3.5.16, Spring JDBC (JdbcClient), PostgreSQL 17.6, Flyway, Redis 7.4.5, Kafka 3.9.1, Testcontainers, PIT
 size: 77 files; 2036 lines main Java; 3485 lines test Java; 452 lines SQL
 reviewer: Claude (Anthropic), senior system analyst; no application code, SQL, test or build file was modified in either pass

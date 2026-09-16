@@ -1,5 +1,5 @@
 {
-  "command": "env JAVA_HOME=/Users/harvey/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.8/Contents/Home PATH=/Users/harvey/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.8/Contents/Home/bin:$PATH ./mvnw -B -ntp test-compile failsafe:integration-test failsafe:verify -Dit.test=F01DatabaseOutageCharacterizationIT",
+  "command": "env JAVA_HOME=<graalvm-jdk-21.0.8 home> PATH=<graalvm-jdk-21.0.8 home>/bin:$PATH ./mvnw -B -ntp test-compile failsafe:integration-test failsafe:verify -Dit.test=F01DatabaseOutageCharacterizationIT",
   "workingDirectory": "/private/tmp/wallet-qa-2026-09-14/failure-probes",
   "log": "/private/tmp/wallet-qa-2026-09-14/f01-recovery.log",
   "tests": 1,

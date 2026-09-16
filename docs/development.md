@@ -82,7 +82,7 @@ docker compose down                # stop the stack; retain database and Kafka v
 
 For startup failures, check port conflicts, dependency health and database role credentials. [PostgreSQL initialization scripts](https://docs.docker.com/guides/postgresql/immediate-setup-and-data-persistence/) apply when its data directory is first created; a retained database volume keeps its existing roles/passwords. Do not delete volumes as a routine troubleshooting step.
 
-`/actuator/health`, `/actuator/health/liveness` and `/actuator/health/readiness` are public. Other Actuator endpoints, including `/actuator/metrics`, require admin access. The current readiness probe does not include PostgreSQL availability; an `UP` result is not proof that money requests can succeed. See [known gaps](../README.md#assumptions--limitations).
+`/actuator/health`, `/actuator/health/liveness` and `/actuator/health/readiness` are public and report status only; component details (`db`, `diskSpace`, …) are shown only to admin callers. Other Actuator endpoints, including `/actuator/metrics`, require admin access. The current readiness probe does not include PostgreSQL availability; an `UP` result is not proof that money requests can succeed. See [known gaps](../README.md#assumptions--limitations).
 
 Logs include a generated `correlationId`, returned to callers as `X-Correlation-ID`; receipts and history include transaction IDs. Monitor command rejection/retry counts, outbox pending count and oldest age, delivery failures, Redis fail-open events and Kafka quarantine failures. Some counters appear only after first use. Redis limits default to 120 authenticated requests per 60 seconds (`ledger.rate-limit.requests`, `ledger.rate-limit.window-seconds`).
 
