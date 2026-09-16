@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Baseline: `863d63f` plus verified F-03 working-tree changes on `coder/corrupt-projection`. Checked 2026-09-16. This is a retrieval index and source-backed snapshot, not a backlog to execute.
+Application baseline: `main` = `a3b7f9d` (F-03 committed). Checked 2026-09-17; documentation-only changes since live on `orchestrate/memory-mgt-v4`. This is a retrieval index and source-backed snapshot, not a backlog to execute.
 
 ## Project goal and must-fulfil requirements
 
@@ -15,12 +15,11 @@ Must fulfil (graded on money-moving correctness, service design, concurrency and
 
 Required stack: Java 21, Spring Boot 3.5.16, PostgreSQL, Redis, Kafka, Flyway, Docker Compose. Full list, confirmed decisions and invariants: [requirements](docs/memory/requirements.md).
 
-## Current state (2026-09-16, `863d63f` + F-03 working tree)
+## Current state (2026-09-17, `a3b7f9d`)
 
-- Every mandatory and supporting feature is implemented and verified locally. Closed and committed: quadratic commit check and TEMP-shadow bypass (V4, `9ef2639`), recipient-balance disclosure and HTTP authorization matrix (`760f4b0`), test-quality findings F-04–F-08 (`e6472f7`), F-01 stopped-database error contract (`5ffb0d2`).
-- F-02 committed at `863d63f`: V5 durable Kafka quarantine, bounded retry, offset/restart safeguards and audited operator replay. [Evidence](docs/kafka-quarantine-f02.md).
-- F-03 implemented and verified, uncommitted: exact integer/long validation before projection writes; real Kafka quarantine and following-snapshot recovery. Fresh full gate: 171 unit + 277 integration cases, zero failures/errors/skips; PIT 92/94 killed (two unchanged factory methods uncovered); 12/12 SQL mutations. [Evidence](docs/balance-projection-f03.md).
-- Open: F-09/F-10/F-11 and review items N1/N3/F4–F7 (low). Remediation steps 3–6 remain partly pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
+- Every mandatory and supporting feature is implemented, committed and verified. Closed: quadratic commit check and TEMP-shadow bypass (V4, `9ef2639`), recipient-balance disclosure and HTTP authorization matrix (`760f4b0`), test-quality findings F-04–F-08 (`e6472f7`), F-01 stopped-database error contract (`5ffb0d2`), F-02 durable Kafka quarantine (`863d63f`), F-03 exact event integers (`a3b7f9d`).
+- Second full QA audit at `a3b7f9d` (2026-09-16): 171 unit + 277 IT green, 97.4% lines / 100% branches, whole-service PIT 95.2%, 484 black-box checks with money correct everywhere and the ledger reconciled after every chaos step. Nothing new broke. [Summary](docs/qa-audit-2026-09-16.md).
+- Open, all non-money: Review F4 blanket `DataAccessException` → 503 (NUL byte gets retry guidance), F-12 balance read → 500 in the dead-connection window of a DB outage, F-13 readiness UP with PostgreSQL stopped, F-14 counters absent until first use; plus F-09/F-10/F-11 and review items N1/N3/F5–F7 (low). Remediation steps 3–6 remain partly pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
 
 ## Sub-memories: read only what the task needs; do not preload notes
 
@@ -33,14 +32,14 @@ Required stack: Java 21, Spring Boot 3.5.16, PostgreSQL, Redis, Kafka, Flyway, D
 | Compact dated timeline of past reviews, fixes and superseded evidence | [history](docs/memory/history.md) |
 | Setup, credentials, endpoints, demo, environment variables | [README](README.md) |
 
-Canonical detail documents: [remediation plan](docs/review-remediation-plan.md) (findings, steps 1–6, acceptance criteria), [V4 evidence](docs/ledger-integrity-v4.md), [step 2 evidence](docs/api-security-step2.md), [QA audit 2026-09-14](docs/qa-audit-2026-09-14.md), [F-01 evidence](docs/database-outage-f01.md).
+Canonical detail documents: [remediation plan](docs/review-remediation-plan.md) (findings, steps 1–6, acceptance criteria), [V4 evidence](docs/ledger-integrity-v4.md), [step 2 evidence](docs/api-security-step2.md), [QA audit 2026-09-14](docs/qa-audit-2026-09-14.md), [F-01](docs/database-outage-f01.md) / [F-02](docs/kafka-quarantine-f02.md) / [F-03](docs/balance-projection-f03.md) evidence, [QA re-audit 2026-09-16](docs/qa-audit-2026-09-16.md).
 
 ## Retrieval and maintenance
 
 1. Check `git status --short` and `git log -5 --oneline` first; if the baseline moved, inspect the committed diff before trusting a note.
 2. Read this index, then one note and the linked source or tests. Use `rg` for symbols instead of loading every document.
 3. The user's current instruction sets scope. Code establishes behavior; tests and reports establish only what they exercise; memory and reviews are summaries, not proof or authorization.
-4. After a meaningful change, update `state.md` (baseline, evidence, open items) and the affected note, then add one dated row to `history.md`. Separate **decided**, **implemented**, **verified**, **historically reported** and **pending**. Never mark a fix verified without fresh evidence.
+4. After a meaningful change, update `state.md` (baseline, evidence, open items) and the affected note, then add one dated row to `history.md`. An audit that publishes only an external report gets a short in-tree summary under `docs/` so the row has something to link. Separate **decided**, **implemented**, **verified**, **historically reported** and **pending**. Never mark a fix verified without fresh evidence.
 5. Keep this index under about 50 lines and each note under about 80. Move superseded facts to `history.md`, never into active notes. The goal and must-fulfil block above must survive every rewrite.
 6. Before a context reset, record only objective, completed changes, evidence, blocker and next action with file and symbol in `state.md`. No transcripts, tool output or secrets.
 

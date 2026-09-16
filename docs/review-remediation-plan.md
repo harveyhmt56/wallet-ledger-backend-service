@@ -223,7 +223,7 @@ Acceptance: rejected money paths have explicit status/code and no partial writes
 
 ### Step 4: make event delivery suitable for production
 
-F-02 recovery slice verified 2026-09-15 and committed at `863d63f`: V5 durable quarantine, bounded retries, retained offsets on recovery failure, restart deduplication, audited replay and alert metrics. [Tests and limits](kafka-quarantine-f02.md#fresh-verification-evidence). F-03 numeric validation implemented and verified 2026-09-16 in the `coder/corrupt-projection` working tree: exact JSON integer/long checks before writes, parser boundaries and real listener quarantine/following-snapshot regression. [Fresh tests and limits](balance-projection-f03.md#fresh-verification-evidence). Topic configuration/durability and relay lease work below remain pending.
+F-02 recovery slice verified 2026-09-15 and committed at `863d63f`: V5 durable quarantine, bounded retries, retained offsets on recovery failure, restart deduplication, audited replay and alert metrics. [Tests and limits](kafka-quarantine-f02.md#fresh-verification-evidence). F-03 numeric validation implemented, verified and committed 2026-09-16 at `a3b7f9d`: exact JSON integer/long checks before writes, parser boundaries and real listener quarantine/following-snapshot regression. [Fresh tests and limits](balance-projection-f03.md#fresh-verification-evidence). Topic configuration/durability and relay lease work below remain pending.
 
 Affected areas: messaging configuration, strict event DTO/parser, outbox relay, a quarantine migration/recoverer, listener integration tests and operations documentation.
 

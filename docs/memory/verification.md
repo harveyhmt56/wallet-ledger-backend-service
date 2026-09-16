@@ -1,10 +1,10 @@
 # Verification: commands, test navigation and evidence rules
 
-Checked 2026-09-16 against `863d63f` plus F-03 working-tree changes; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
+Checked 2026-09-17 against `a3b7f9d`; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
 
 ## Commands
 
-Run from the repository root with Java 21; integration/mutation gates require Docker and dependency images. See [README setup](../../README.md#how-to-run-setup-database-and-tests) and [pom.xml](../../pom.xml).
+Run from the repository root with Java 21 (`JAVA_HOME=$(/usr/libexec/java_home -v21)` on this machine; nothing in the build enforces it and the unit suite passes silently on JDK 24); integration/mutation gates require Docker and dependency images. See [README setup](../../README.md#how-to-run-setup-database-and-tests) and [pom.xml](../../pom.xml).
 
 | Purpose | Command / output |
 | --- | --- |
@@ -17,6 +17,7 @@ Run from the repository root with Java 21; integration/mutation gates require Do
 | Optional warmed long-history benchmark | `./mvnw -Dtest=LedgerHistoryMeasurement test`; [V3 comparison](../ledger-integrity-v4.md#long-history-measurements) |
 | Bounded SQL integrity audit against a database | [scripts/audit-ledger.sql](../../scripts/audit-ledger.sql); fails on findings |
 | Generated evidence | `target/surefire-reports`, `target/failsafe-reports`, `target/pit-reports`, `target/site/jacoco`, `target/load-report.json` |
+| Black-box / chaos audit of the built image | Not in the repository: isolated Compose project on offset ports, stdlib Python probes, container stop/pause/kill; procedure, scenarios and limits in the [2026-09-16 re-audit](../qa-audit-2026-09-16.md) |
 
 CI ([verify.yml](../../.github/workflows/verify.yml)) runs `clean verify -Pmutation` on Ubuntu 24.04 / Java 21 with Docker and keeps Surefire/Failsafe/PIT reports 14 days. The normal PIT gate targets `*.domain.*`, `TransferReceipt`, `RequiredJwtConfiguration`, `ApiProblems`, `RateLimitFilter`, `RedisRateLimiter`, `BalanceProjection`, `KafkaQuarantine`, `MessagingConfiguration*`; the broader all-class score is a scratch measurement, not the gate ([how to reproduce](../test-gap-evidence-2026-09-13.md#reproduction-and-limits)).
 
@@ -49,4 +50,5 @@ Tests use disposable Testcontainers PostgreSQL/Redis/Kafka, never H2 or the Comp
 - Red evidence for a test-only change comes from deliberately corrupted scratch implementations plus restored passing controls; never implement a production defect to make a test fail, and never reconstruct historical TDD commits.
 - Coverage demonstrates execution, not correctness of every failure case; PIT survivors/uncovered mutants need manual interpretation before being called gaps or safe.
 - Still unverified anywhere: hosted CI execution, live identity provider, multi-broker durability, competing relay leases, automatic topic creation, backup/restore, production latency targets. Compose is a local demo, not high availability.
-- Canonical detail: [remediation plan](../review-remediation-plan.md) (findings, steps, acceptance criteria), [V4 evidence](../ledger-integrity-v4.md), [step 2 evidence](../api-security-step2.md), [QA audit 2026-09-14](../qa-audit-2026-09-14.md), [F-01 evidence](../database-outage-f01.md); older reports are linked from [history](history.md).
+- Observed only black-box, with no automated test in the repository: readiness semantics, a read during a database outage, a frozen (paused) dependency, process kill mid-flight, the reconciliation report on a corrupted wallet, `INVALID_PLAYER_IDENTITY` and `NOT_FOUND`. The ordered test additions are in the [re-audit](../qa-audit-2026-09-16.md#qa-worth-adding-in-order).
+- Canonical detail: [remediation plan](../review-remediation-plan.md) (findings, steps, acceptance criteria), [V4 evidence](../ledger-integrity-v4.md), [step 2 evidence](../api-security-step2.md), [QA audit 2026-09-14](../qa-audit-2026-09-14.md), [F-01](../database-outage-f01.md) / [F-02](../kafka-quarantine-f02.md) / [F-03](../balance-projection-f03.md) evidence, [QA re-audit 2026-09-16](../qa-audit-2026-09-16.md); older reports are linked from [history](history.md).
