@@ -1,6 +1,6 @@
 # Implementation map
 
-Checked 2026-09-15 against `9b9ccd9` plus F-02 working-tree changes on `coder/mq-issue-fix`; V5 added, V1–V4 unchanged. [Index](../../MEMORY.md).
+Checked 2026-09-16 against `863d63f` plus F-03 working-tree changes on `coder/corrupt-projection`; V1–V5 unchanged by F-03. [Index](../../MEMORY.md).
 Read [open findings and pending steps](state.md#open-findings) alongside this map before making safety/readiness claims.
 
 ## Entry points
@@ -59,6 +59,7 @@ Spring's [nested propagation documentation](https://docs.spring.io/spring-framew
 ## Messaging, Redis and runtime
 
 - Balance event v1: `eventId`, `walletId`, `walletSequence`, `journalTransactionId`, `delta`, `balanceAfter`, `reason`, `occurredAt`, `schemaVersion`. Topic/key: `wallet.balance-changed.v1` / wallet UUID.
+- F-03: [`BalanceProjection`](../../src/main/java/com/example/walletledger/messaging/kafka/BalanceProjection.java) requires exact JSON integer types and representable longs for `schemaVersion`, `walletSequence` and `balanceAfter` before conversion or JDBC writes, then enforces version 1, sequence > 0 and balance >= 0. Decimal/exponent/string/boolean coercion and overflow fail with `IllegalArgumentException`; zero balance and `Long.MAX_VALUE` remain valid. [Tests and limits](../balance-projection-f03.md).
 - Relay leases up to 100 rows for 60 seconds using `SKIP LOCKED`; sends outside money transactions; marks delivery after Kafka acknowledgement with lease-token fencing. Duplicates/reordering remain possible. The configured `ledger.outbox.topic` is not wired into the hardcoded topic constant.
 - Consumer commits event-ID deduplication and projection together; only newer sequences replace the absolute balance. It never sums out-of-order deltas. F-02: `IllegalArgumentException` and default fatal failures quarantine immediately; other failures get three attempts with 1-second back-off, even when exception types change. [KafkaQuarantine](../../src/main/java/com/example/walletledger/messaging/kafka/KafkaQuarantine.java) commits in `REQUIRES_NEW` before recovery returns; write/commit failures escape, retaining source delivery. Duplicate recovery preserves the first row. [Metrics, restricted replay and evidence](../kafka-quarantine-f02.md). Topic creation still uses three partitions and replication one outside a local-only restriction.
 - Redis Lua counter/expiry defaults to 120 authenticated requests per 60 seconds; Actuator bypasses rate limiting. Redis failures fail open and increment `wallet.rate_limit.degraded`. HTTP `Retry-After` is currently hardcoded to 60.

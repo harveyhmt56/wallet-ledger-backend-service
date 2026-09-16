@@ -6,6 +6,8 @@ import static org.awaitility.Awaitility.await;
 
 import com.example.walletledger.messaging.outbox.OutboxRelay;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -20,6 +22,8 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -255,6 +259,104 @@ class BalanceListenerIT {
         listener.stop();
         errors.setRetryListeners();
       }
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "schemaVersion, 4294967297",
+    "walletSequence, 27670116110564327423",
+    "balanceAfter, 18446744073709551616"
+  })
+  void oversizedEventIntegersAreQuarantinedBeforeWritesAndFollowingSnapshotStillApplies(
+      String field, String value) throws Exception {
+    UUID wallet = UUID.randomUUID();
+    wallets.provision(wallet);
+    wallets.credit(wallet, 45, "parser-test", "first", "f03", UUID.randomUUID().toString());
+    wallets.credit(wallet, 10, "parser-test", "second", "f03", UUID.randomUUID().toString());
+    var snapshots =
+        sql.queryForList(
+            "select payload::text from outbox_event where wallet_id=? order by wallet_sequence",
+            String.class,
+            wallet);
+    var ledger =
+        sql.queryForList(
+            "select * from ledger_entry where wallet_id=? order by wallet_sequence", wallet);
+    ObjectNode invalid = (ObjectNode) json.readTree(snapshots.get(1));
+    UUID invalidId = UUID.fromString(invalid.path("eventId").asText());
+    invalid.put(field, new BigInteger(value));
+    String poisonPayload = json.writeValueAsString(invalid);
+    var attempts = new java.util.concurrent.ConcurrentHashMap<Long, Integer>();
+    errors.setRetryListeners(
+        (record, failure, attempt) -> attempts.merge(record.offset(), 1, Integer::sum));
+    var listener = listeners.getListenerContainers().iterator().next();
+    try (AdminClient admin =
+        AdminClient.create(Map.of("bootstrap.servers", KAFKA.getBootstrapServers()))) {
+      ensureTopic(admin);
+      listener.start();
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(() -> assertThat(listener.getAssignedPartitions()).hasSize(3));
+      var first =
+          kafka
+              .send(OutboxRelay.TOPIC, 0, wallet.toString(), snapshots.get(0))
+              .get(5, TimeUnit.SECONDS)
+              .getRecordMetadata();
+      awaitOffset(admin, first);
+      awaitProjection(wallet, 1, 45, 1);
+
+      var poison =
+          kafka
+              .send(OutboxRelay.TOPIC, 0, wallet.toString(), poisonPayload)
+              .get(5, TimeUnit.SECONDS)
+              .getRecordMetadata();
+      awaitOffset(admin, poison);
+      assertThat(quarantined(poison)).isEqualTo(1);
+      var quarantine =
+          sql.queryForMap(
+              "select * from kafka_quarantine where consumer_group=? and topic=? and partition_id=? and record_offset=?",
+              GROUP,
+              poison.topic(),
+              poison.partition(),
+              poison.offset());
+      assertThat((byte[]) quarantine.get("record_key"))
+          .isEqualTo(wallet.toString().getBytes(StandardCharsets.UTF_8));
+      assertThat((byte[]) quarantine.get("payload"))
+          .isEqualTo(poisonPayload.getBytes(StandardCharsets.UTF_8));
+      assertThat(quarantine.get("error_type")).isEqualTo(IllegalArgumentException.class.getName());
+      assertThat(quarantine.get("quarantined_at")).isNotNull();
+      assertThat(attempts.get(poison.offset())).isEqualTo(1);
+      awaitProjection(wallet, 1, 45, 1);
+      assertThat(
+              sql.queryForObject(
+                  "select count(*) from consumed_event where event_id=?", Long.class, invalidId))
+          .isZero();
+
+      // The original snapshot has the same event ID and must remain eligible after rejection.
+      var following =
+          kafka
+              .send(OutboxRelay.TOPIC, 0, wallet.toString(), snapshots.get(1))
+              .get(5, TimeUnit.SECONDS)
+              .getRecordMetadata();
+      awaitOffset(admin, following);
+      awaitProjection(wallet, 2, 55, 2);
+      assertThat(quarantined(following)).isZero();
+      assertThat(wallets.balance(wallet))
+          .containsEntry("balance", 55L)
+          .containsEntry("sequence", 2L);
+      assertThat(
+              sql.queryForList(
+                  "select * from ledger_entry where wallet_id=? order by wallet_sequence", wallet))
+          .isEqualTo(ledger);
+      assertThat(
+              sql.queryForList(
+                  "select payload::text from outbox_event where wallet_id=? order by wallet_sequence",
+                  String.class,
+                  wallet))
+          .isEqualTo(snapshots);
+    } finally {
+      listener.stop();
+      errors.setRetryListeners();
     }
   }
 

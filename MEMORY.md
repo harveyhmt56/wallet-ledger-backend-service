@@ -1,6 +1,6 @@
 # Wallet ledger project memory
 
-Baseline: `9b9ccd9` plus verified F-02 working-tree changes on `coder/mq-issue-fix`. Checked 2026-09-15. This is a retrieval index and source-backed snapshot, not a backlog to execute.
+Baseline: `863d63f` plus verified F-03 working-tree changes on `coder/corrupt-projection`. Checked 2026-09-16. This is a retrieval index and source-backed snapshot, not a backlog to execute.
 
 ## Project goal and must-fulfil requirements
 
@@ -15,11 +15,12 @@ Must fulfil (graded on money-moving correctness, service design, concurrency and
 
 Required stack: Java 21, Spring Boot 3.5.16, PostgreSQL, Redis, Kafka, Flyway, Docker Compose. Full list, confirmed decisions and invariants: [requirements](docs/memory/requirements.md).
 
-## Current state (2026-09-15, `9b9ccd9` + F-02 working tree)
+## Current state (2026-09-16, `863d63f` + F-03 working tree)
 
 - Every mandatory and supporting feature is implemented and verified locally. Closed and committed: quadratic commit check and TEMP-shadow bypass (V4, `9ef2639`), recipient-balance disclosure and HTTP authorization matrix (`760f4b0`), test-quality findings F-04–F-08 (`e6472f7`), F-01 stopped-database error contract (`5ffb0d2`).
-- F-02 implemented and verified, uncommitted: V5 durable Kafka quarantine, bounded retry, offset/restart safeguards and audited operator replay. Fresh full gate: 129 unit + 274 integration cases, zero failures/errors/skips; PIT 82/84 killed (two unchanged factory methods uncovered); 12/12 SQL mutations. [Evidence](docs/kafka-quarantine-f02.md).
-- Open: F-03 oversized event integers corrupt the projection (medium); F-09/F-10/F-11 and review items N1/N3/F4–F7 (low). Remediation steps 3–6 remain partly pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
+- F-02 committed at `863d63f`: V5 durable Kafka quarantine, bounded retry, offset/restart safeguards and audited operator replay. [Evidence](docs/kafka-quarantine-f02.md).
+- F-03 implemented and verified, uncommitted: exact integer/long validation before projection writes; real Kafka quarantine and following-snapshot recovery. Fresh full gate: 171 unit + 277 integration cases, zero failures/errors/skips; PIT 92/94 killed (two unchanged factory methods uncovered); 12/12 SQL mutations. [Evidence](docs/balance-projection-f03.md).
+- Open: F-09/F-10/F-11 and review items N1/N3/F4–F7 (low). Remediation steps 3–6 remain partly pending. Production readiness is **not** established. Details and next action: [state](docs/memory/state.md).
 
 ## Sub-memories: read only what the task needs; do not preload notes
 

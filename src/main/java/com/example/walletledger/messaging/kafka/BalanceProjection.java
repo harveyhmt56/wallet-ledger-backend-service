@@ -1,6 +1,7 @@
 package com.example.walletledger.messaging.kafka;
 
 import com.example.walletledger.messaging.domain.ProjectionPolicy;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -23,13 +24,10 @@ public class BalanceProjection {
       var event = json.readTree(payload);
       UUID id = UUID.fromString(event.path("eventId").asText());
       UUID wallet = UUID.fromString(event.path("walletId").asText());
-      long sequence = event.path("walletSequence").longValue();
-      long balance = event.path("balanceAfter").longValue();
-      if (event.path("schemaVersion").asInt() != 1
-          || !event.path("walletSequence").isIntegralNumber()
-          || !event.path("balanceAfter").isIntegralNumber()
-          || sequence <= 0
-          || balance < 0) {
+      long version = exactLong(event.path("schemaVersion"));
+      long sequence = exactLong(event.path("walletSequence"));
+      long balance = exactLong(event.path("balanceAfter"));
+      if (version != 1 || sequence <= 0 || balance < 0) {
         throw new IllegalArgumentException("Invalid balance event");
       }
       int inserted =
@@ -60,5 +58,12 @@ public class BalanceProjection {
     } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
       throw new IllegalArgumentException("Invalid balance event JSON", invalid);
     }
+  }
+
+  private static long exactLong(JsonNode value) {
+    if (!value.isIntegralNumber() || !value.canConvertToLong()) {
+      throw new IllegalArgumentException("Invalid balance event");
+    }
+    return value.longValue();
   }
 }

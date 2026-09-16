@@ -78,6 +78,7 @@
             <param>com.example.walletledger.configuration.ApiProblems</param>
             <param>com.example.walletledger.configuration.RateLimitFilter</param>
             <param>com.example.walletledger.configuration.RedisRateLimiter</param>
+            <param>com.example.walletledger.messaging.kafka.BalanceProjection</param>
             <param>com.example.walletledger.messaging.kafka.KafkaQuarantine</param>
             <param>com.example.walletledger.messaging.kafka.MessagingConfiguration*</param>
           </targetClasses>

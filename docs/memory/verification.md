@@ -1,6 +1,6 @@
 # Verification: commands, test navigation and evidence rules
 
-Checked 2026-09-15 against `9b9ccd9` plus F-02 working-tree changes; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
+Checked 2026-09-16 against `863d63f` plus F-03 working-tree changes; [index](../../MEMORY.md). Fresh results and open findings live in [state](state.md); dated past runs in [history](history.md).
 
 ## Commands
 
@@ -18,7 +18,7 @@ Run from the repository root with Java 21; integration/mutation gates require Do
 | Bounded SQL integrity audit against a database | [scripts/audit-ledger.sql](../../scripts/audit-ledger.sql); fails on findings |
 | Generated evidence | `target/surefire-reports`, `target/failsafe-reports`, `target/pit-reports`, `target/site/jacoco`, `target/load-report.json` |
 
-CI ([verify.yml](../../.github/workflows/verify.yml)) runs `clean verify -Pmutation` on Ubuntu 24.04 / Java 21 with Docker and keeps Surefire/Failsafe/PIT reports 14 days. The normal PIT gate targets `*.domain.*`, `TransferReceipt`, `RequiredJwtConfiguration`, `ApiProblems`, `RateLimitFilter`, `RedisRateLimiter`, `KafkaQuarantine`, `MessagingConfiguration*`; the broader all-class score is a scratch measurement, not the gate ([how to reproduce](../test-gap-evidence-2026-09-13.md#reproduction-and-limits)).
+CI ([verify.yml](../../.github/workflows/verify.yml)) runs `clean verify -Pmutation` on Ubuntu 24.04 / Java 21 with Docker and keeps Surefire/Failsafe/PIT reports 14 days. The normal PIT gate targets `*.domain.*`, `TransferReceipt`, `RequiredJwtConfiguration`, `ApiProblems`, `RateLimitFilter`, `RedisRateLimiter`, `BalanceProjection`, `KafkaQuarantine`, `MessagingConfiguration*`; the broader all-class score is a scratch measurement, not the gate ([how to reproduce](../test-gap-evidence-2026-09-13.md#reproduction-and-limits)).
 
 ## Test navigation
 
@@ -37,6 +37,7 @@ CI ([verify.yml](../../.github/workflows/verify.yml)) runs `clean verify -Pmutat
 | Signed JWT over real HTTP with loopback JWK; required issuer/audiences fail closed; filter-level role denials with a fake decoder | [ConfiguredJwtHttpIT](../../src/test/java/com/example/walletledger/configuration/ConfiguredJwtHttpIT.java), [JwtConfigurationTest](../../src/test/java/com/example/walletledger/configuration/JwtConfigurationTest.java), [JwtSecurityTest](../../src/test/java/com/example/walletledger/configuration/JwtSecurityTest.java) |
 | Kafka outage/lease, first delivery, duplicate/stale/zero snapshots, dedup rollback; production listener with committed offsets; relay counters/interrupt; event parsing | [MessagingIT](../../src/test/java/com/example/walletledger/messaging/MessagingIT.java), [BalanceListenerIT](../../src/test/java/com/example/walletledger/messaging/kafka/BalanceListenerIT.java), [OutboxRelayTest](../../src/test/java/com/example/walletledger/messaging/OutboxRelayTest.java), [BalanceProjectionTest](../../src/test/java/com/example/walletledger/messaging/BalanceProjectionTest.java) |
 | F-02 poison/quarantine, commit-failure offset retention, bounded transient retry, restart deduplication, audited authoritative replay; unit recovery policy/metrics | [BalanceListenerIT](../../src/test/java/com/example/walletledger/messaging/kafka/BalanceListenerIT.java), [KafkaQuarantineTest](../../src/test/java/com/example/walletledger/messaging/kafka/KafkaQuarantineTest.java), [MessagingConfigurationTest](../../src/test/java/com/example/walletledger/messaging/kafka/MessagingConfigurationTest.java); [commands and evidence](../kafka-quarantine-f02.md#fresh-verification-evidence) |
+| F-03 exact numeric types/long bounds before writes; invalid snapshot quarantined, valid same-ID snapshot advances projection without changing money | [BalanceProjectionTest](../../src/test/java/com/example/walletledger/messaging/BalanceProjectionTest.java), [BalanceListenerIT](../../src/test/java/com/example/walletledger/messaging/kafka/BalanceListenerIT.java); [red/green, mutation and full-gate evidence](../balance-projection-f03.md#fresh-verification-evidence) |
 | Redis TTL/quota; 429, caller identity, bypasses, null-result fail-open; problem advice via MockMvc | [RedisRateLimiterIT](../../src/test/java/com/example/walletledger/configuration/RedisRateLimiterIT.java), [RateLimitFilterTest](../../src/test/java/com/example/walletledger/configuration/RateLimitFilterTest.java), [ApiProblemsTest](../../src/test/java/com/example/walletledger/configuration/ApiProblemsTest.java) |
 | Transaction-start availability vs unexpected transaction failures; real stopped-DB 503, unchanged durable state, same-key recovery and replay | [ApiProblemsTest](../../src/test/java/com/example/walletledger/configuration/ApiProblemsTest.java), [DatabaseOutageHttpIT](../../src/test/java/com/example/walletledger/configuration/DatabaseOutageHttpIT.java); [F-01 commands and evidence](../database-outage-f01.md) |
 
