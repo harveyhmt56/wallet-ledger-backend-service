@@ -1,9 +1,0 @@
-Jackson=2.21.4, Java=21.0.8
-18446744073709551621 integral=true fitsLong=false longValue=5
-9223372036854775808 integral=true fitsLong=false longValue=-9223372036854775808
-18446744073709551617 integral=true fitsLong=false longValue=1
-1.5 integral=false fitsLong=true longValue=1
-{"walletSequence":1,"balanceAfter":18446744073709551621} -> JsonMappingException
-{"walletSequence":1} -> Event[walletSequence=1, balanceAfter=0]
-{"walletSequence":1,"balanceAfter":null} -> Event[walletSequence=1, balanceAfter=0]
-{"walletSequence":1,"balanceAfter":1.5} -> InvalidFormatException

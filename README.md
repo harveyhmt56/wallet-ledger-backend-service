@@ -76,7 +76,7 @@ Results: `target/surefire-reports` (unit), `target/failsafe-reports` (integratio
 | Transactional outbox to Kafka | A committed payment retains its event even if Kafka is down | Delivery is asynchronous; duplicates and reordering must be handled |
 | Spring JDBC with explicit SQL | Locking and transaction behavior are easy to inspect | More SQL and mapping code to maintain |
 
-[WalletService](src/main/java/com/example/walletledger/wallet/application/WalletService.java) handles all postings. Database constraints/triggers enforce balanced journals, wallet totals, sequences and running balances, and reject changes to existing history. Platform totals are derived, avoiding a shared platform-balance lock. Some posting rules remain in service code; see [database checks and limits](docs/ledger-integrity-v4.md#database-boundary).
+[WalletService](src/main/java/com/example/walletledger/wallet/application/WalletService.java) handles all postings. Database constraints/triggers enforce balanced journals, wallet totals, sequences and running balances, and reject changes to existing history. Platform totals are derived, avoiding a shared platform-balance lock. Some posting rules remain in service code; see [the implementation map](docs/memory/implementation.md#schema-and-reads).
 
 Balance reads use PostgreSQL. Redis only limits traffic and fails open on outage; it is not a source of funds. Kafka's consumer is an eventually consistent balance projection.
 
@@ -93,7 +93,7 @@ Balance reads use PostgreSQL. Redis only limits traffic and fails open on outage
 
 **After a timeout or lost response, retry with the same key.** A replay's `balanceAfter` is the original receipt value; query `/balance` for current funds. Use a new key for a new action, including a new day's daily claim. Business references must also be unique across wallets within `(operation, source, reference)`; claim and refund constraints prevent duplicate business actions with different keys.
 
-The outbox relay publishes after commit and marks delivery after Kafka acknowledgement; a crash between those steps can resend an event. The consumer deduplicates event IDs and applies only newer wallet sequences using absolute balances. Delivery is **at least once**, with [quarantine and operator replay](docs/kafka-quarantine-f02.md) for failed records. See [Kafka delivery semantics](https://kafka.apache.org/39/design/design/).
+The outbox relay publishes after commit and marks delivery after Kafka acknowledgement; a crash between those steps can resend an event. The consumer deduplicates event IDs and applies only newer wallet sequences using absolute balances. Delivery is **at least once**, with [quarantine and operator replay](docs/operations.md#kafka-quarantine) for failed records. See [Kafka delivery semantics](https://kafka.apache.org/39/design/design/).
 
 ## Testing approach
 
@@ -107,7 +107,7 @@ The key debit race in [MoneyPressureHttpIT](src/test/java/com/example/walletledg
 
 [DatabaseSafeguardsIT](src/test/java/com/example/walletledger/wallet/DatabaseSafeguardsIT.java) makes the overlap deterministic: hold one debit uncommitted, observe the competing debit blocked by PostgreSQL, commit the first, and require the second to reject using the updated balance. Separate races cover 100 copies of one idempotency key and 500 players competing for 100 promotion slots.
 
-The [dated QA report](docs/qa-audit-2026-09-16.md) records past results and remaining findings; the commands above produce fresh evidence for your checkout.
+The [current state](docs/memory/state.md) records the latest verified baseline and remaining findings; the commands above produce fresh evidence for your checkout.
 
 ## Assumptions & limitations
 
@@ -118,7 +118,7 @@ The [dated QA report](docs/qa-audit-2026-09-16.md) records past results and rema
 - **Retention and audit:** ledger, idempotency and consumer deduplication records are retained indefinitely; archival is future work. History lacks refund-origin and transfer-counterparty fields.
 - **Known operational gaps:** database errors can receive misleading 503 retry guidance, balance reads can return 500 during an outage, readiness can remain UP with PostgreSQL down, and some metrics appear only after first use. End-to-end database request deadlines also need hardening.
 
-**Production readiness is not established.** Compose provides a local environment; deployment still needs JWT identity integration, secrets, controlled migrations, backups/restore drills and high availability. See [open findings and improvements](docs/memory/state.md#open-findings) and the [migration runbook](docs/ledger-integrity-v4.md#populated-upgrades-and-operational-audit).
+**Production readiness is not established.** Compose provides a local environment; deployment still needs JWT identity integration, secrets, controlled migrations, backups/restore drills and high availability. See [open findings and improvements](docs/memory/state.md#open-findings) and [production operations](docs/operations.md).
 
 ## License
 
