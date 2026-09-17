@@ -1,6 +1,6 @@
 # Goals, requirements and confirmed decisions
 
-Durable note: rewrite only when the user changes the requirement. Checked 2026-09-17 against `a3b7f9d` (requirements unchanged since 2026-09-09); [index](../../MEMORY.md).
+Durable note: rewrite only when the user changes the requirement. Checked 2026-09-17 at `6753811` (requirements unchanged since 2026-09-09); [index](../../MEMORY.md).
 
 ## Project goal
 

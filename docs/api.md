@@ -23,7 +23,7 @@ Outside `local`, configure OAuth2 JWT authentication:
 - `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES`: required accepted audience(s), with no blank members.
 - `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI`: optional explicit JWK endpoint to avoid issuer discovery.
 
-Signed `roles` claims contain `PLAYER`, `SERVICE` or `ADMIN`; a player's `sub` is their provisioned UUID. Startup rejects missing issuer/audience configuration. Tests use signed tokens and a local JWK fixture; integration with a production identity provider remains deployment-specific. See [Spring Security JWT configuration](https://docs.spring.io/spring-security/reference/6.5/servlet/oauth2/resource-server/jwt.html) and [authorization evidence](api-security-step2.md).
+Signed `roles` claims contain `PLAYER`, `SERVICE` or `ADMIN`; a player's `sub` is their provisioned UUID. Startup rejects missing issuer/audience configuration. Tests use signed tokens and a local JWK fixture; integration with a production identity provider remains deployment-specific. See [Spring Security JWT configuration](https://docs.spring.io/spring-security/reference/6.5/servlet/oauth2/resource-server/jwt.html) and the [security test map](memory/verification.md#test-navigation).
 
 ## Write a credit
 
@@ -79,6 +79,6 @@ Handled API errors use `application/problem+json` with a stable `code`:
 
 Business rejections inside command execution are stored for replay. Validation and authorization failures before execution are not stored. After an uncertain outcome, preserve the original idempotency key when retrying.
 
-Known gaps: every handled `DataAccessException` currently receives 503 retry guidance even when nontransient; some reads return 500 during a database outage, and error details are not fully consistent across framework and business failures. See [outage evidence](database-outage-f01.md) and [open findings](memory/state.md#open-findings).
+Known gaps: every handled `DataAccessException` currently receives 503 retry guidance even when nontransient; some reads return 500 during a database outage, and error details are not fully consistent across framework and business failures. See [open findings](memory/state.md#open-findings).
 
 The default quota is 120 authenticated requests per 60-second window. Redis failures fail open and increment `wallet.rate_limit.degraded`; money checks remain in PostgreSQL. Health endpoints are public; other exposed Actuator endpoints require ADMIN. Responses include a generated `X-Correlation-ID` for matching logs.

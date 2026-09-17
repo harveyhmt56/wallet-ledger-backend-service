@@ -46,7 +46,7 @@ Flyway runs automatically at application startup. Applied permanent schemas must
 | [V4](../src/main/resources/db/migration/V4__indexed_ledger_integrity.sql) | Existing-data audit and indexed ledger integrity checks |
 | [V5](../src/main/resources/db/migration/V5__kafka_quarantine.sql) | Kafka quarantine and operator replay audit |
 
-**For a populated V4 upgrade, schedule a maintenance window and quiesce writers.** Its full-history preflight blocks writes and aborts on inconsistent data. Production needs an enforced migrate/validate step before serving instances disable startup Flyway; that deployment pipeline is not implemented here. Follow the [upgrade procedure and bounded ledger audit](ledger-integrity-v4.md#populated-upgrades-and-operational-audit), including migration-session timeout settings. Request-pool timeouts do not bound Flyway's separate connection.
+**For a populated V4 upgrade, schedule a maintenance window and quiesce writers.** Its full-history preflight blocks writes and aborts on inconsistent data. Production needs an enforced migrate/validate step before serving instances disable startup Flyway; that deployment pipeline is not implemented here. Follow the [upgrade procedure and bounded ledger audit](operations.md#populated-v4-migration), including migration-session timeout settings. Request-pool timeouts do not bound Flyway's separate connection.
 
 ## Tests, formatting and reports
 
@@ -61,15 +61,6 @@ Flyway runs automatically at application startup. Applied permanent schemas must
 Java 21 is required. Integration tests use disposable PostgreSQL, Redis and Kafka containers; keep Docker running with accessible socket permissions. They do not use the Compose database, and the Compose stack need not be running. `verify` runs both Surefire (`*Test`) and Failsafe (`*IT`), following [Maven's lifecycle](https://maven.apache.org/surefire/maven-failsafe-plugin/). The [CI workflow](../.github/workflows/verify.yml) runs `clean verify -Pmutation`.
 
 Reports appear in `target/surefire-reports/`, `target/failsafe-reports/` and `target/pit-reports/index.html`. The executable package is `target/wallet-ledger-service-0.0.1-SNAPSHOT.jar`. PIT requires at least 80% mutation and coverage scores for its configured targets and fails if there are no mutations; it is not whole-service coverage. See [pom.xml](../pom.xml) for the target list and [test navigation](memory/verification.md#test-navigation) for focused suites.
-
-Optional local measurements also need Docker and are excluded from normal test discovery:
-
-```sh
-./mvnw -Dtest=LoadMeasurement test
-./mvnw -Dtest=LedgerHistoryMeasurement test
-```
-
-Outputs are `target/load-report.json` and `target/ledger-history-v<schema-version>.json` (currently `v5`). They measure local Java/PostgreSQL behavior, not production HTTP latency or Kafka delivery. See [measurement scope and comparison](ledger-integrity-v4.md#long-history-measurements).
 
 ## Troubleshooting and observability
 
@@ -86,4 +77,4 @@ For startup failures, check port conflicts, dependency health and database role 
 
 Logs include a generated `correlationId`, returned to callers as `X-Correlation-ID`; receipts and history include transaction IDs. Monitor command rejection/retry counts, outbox pending count and oldest age, delivery failures, Redis fail-open events and Kafka quarantine failures. Some counters appear only after first use. Redis limits default to 120 authenticated requests per 60 seconds (`ledger.rate-limit.requests`, `ledger.rate-limit.window-seconds`).
 
-Use the admin reconciliation endpoint for wallet/ledger comparison and schedule the [bounded SQL ledger audit](ledger-integrity-v4.md#populated-upgrades-and-operational-audit). For incidents, follow the [database outage and same-key retry guidance](database-outage-f01.md) and [Kafka quarantine triage and audited replay procedure](kafka-quarantine-f02.md#detection-and-triage).
+Use the admin reconciliation endpoint for wallet/ledger comparison and schedule the [bounded SQL ledger audit](operations.md#populated-v4-migration). For uncertain write outcomes, retry with the same idempotency key. For failed balance events, follow the [Kafka quarantine and audited replay procedure](operations.md#kafka-quarantine).
